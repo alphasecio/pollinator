@@ -1,0 +1,66 @@
+{{define "display_waiting"}}
+{{if not .Poll}}
+<div class="text-center py-10">
+    <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">Pollinator</h1>
+    <p class="mt-4 text-zinc-400">Waiting for the host to set up the poll{{template "waiting_dots" .}}</p>
+</div>
+{{else}}
+<div class="text-center py-10">
+    <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">Scan to join <span class="text-pollen">{{.EventTitle}}</span></h1>
+    {{template "qr_block" .}}
+    <p class="mt-8 text-zinc-400">
+        {{len .State.Participants}} joined · waiting for the host to start
+        {{template "waiting_dots" .}}
+    </p>
+    {{if .ParticipantNames}}
+    <div class="mt-4 flex flex-wrap justify-center gap-2 max-w-xl mx-auto">
+        {{range $i, $name := .ParticipantNames}}
+        <span class="rounded-full bg-zinc-900 border px-3 py-1 text-sm
+                      {{if eq (mod $i 2) 0}}border-pollen/50 text-pollen{{else}}border-nectar/50 text-nectar{{end}}">{{$name}}</span>
+        {{end}}
+    </div>
+    {{end}}
+</div>
+{{end}}
+{{end}}
+
+{{define "display_qr_overlay"}}
+<div class="text-center py-10">
+    <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">Scan to join <span class="text-pollen">{{.EventTitle}}</span></h1>
+    {{template "qr_block" .}}
+</div>
+{{end}}
+
+{{define "display_question"}}
+<div class="py-10 text-center">
+    <p class="text-zinc-400 text-sm mb-4">Question {{add1 .State.QuestionIndex}} of {{len .Poll.Questions}}</p>
+    <div class="font-mono text-6xl mb-6 text-pollen">
+        <span data-countdown-end="{{.EndUnixMilli}}">{{.SecondsLeft}}</span>
+    </div>
+    <h2 class="text-4xl font-bold mb-10">{{.Question.Question}}</h2>
+    <div class="grid gap-3 max-w-xl mx-auto text-left">
+        {{range .Question.Options}}
+        <div class="rounded-xl bg-zinc-900 border border-zinc-800 px-5 py-4 text-xl">{{.}}</div>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{define "display_results"}}
+<div class="py-10 max-w-2xl mx-auto text-center">
+    <h2 class="text-4xl font-bold mb-12">{{.Question.Question}}</h2>
+    <div class="text-left">
+        {{template "results_bars_large" .Results}}
+    </div>
+</div>
+{{end}}
+
+{{define "display_finished"}}
+<div class="text-center py-16">
+    <p class="inline-flex items-center gap-2 text-nectar text-sm font-semibold tracking-widest uppercase mb-4">
+        <span class="w-2 h-2 rounded-full bg-nectar"></span>
+        Poll ended
+    </p>
+    <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">Thanks for playing!</h1>
+</div>
+{{end}}
