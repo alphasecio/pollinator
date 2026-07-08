@@ -1,0 +1,170 @@
+{{define "questions_preview"}}
+<button type="button" data-questions-toggle
+        class="fixed top-4 right-4 z-40 rounded-lg bg-zinc-900 border border-zinc-800 px-3 py-2
+               text-xs text-zinc-400 hover:text-zinc-200 hover:border-zinc-700 transition">
+    Questions
+</button>
+
+<div data-questions-backdrop
+     class="fixed inset-0 bg-black/60 z-40 opacity-0 pointer-events-none transition-opacity duration-200"></div>
+
+<div data-questions-drawer
+     class="fixed top-0 right-0 z-50 h-full w-80 max-w-[85vw] bg-zinc-900 border-l border-zinc-800
+            translate-x-full transition-transform duration-200 overflow-y-auto text-left">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="font-semibold text-zinc-100">All questions</h3>
+            <button type="button" data-questions-toggle
+                    class="text-zinc-500 hover:text-zinc-300 text-2xl leading-none">&times;</button>
+        </div>
+        <ol class="space-y-5">
+            {{range $i, $q := .Poll.Questions}}
+            <li class="border-b border-zinc-800 pb-5 last:border-0 last:pb-0">
+                <p class="text-zinc-200 font-medium mb-2">{{add1 $i}}. {{$q.Question}}</p>
+                <ul class="space-y-1">
+                    {{range $q.Options}}
+                    <li class="text-zinc-500 text-sm pl-4">{{.}}</li>
+                    {{end}}
+                </ul>
+            </li>
+            {{end}}
+        </ol>
+    </div>
+</div>
+{{end}}
+
+{{define "poll_form"}}
+<div id="poll-seed" data-seed="{{if .Poll}}{{toJSONBase64 .Poll}}{{end}}" class="hidden"></div>
+
+<div class="mb-4">
+    <label class="block text-sm text-zinc-400 mb-1">Event name</label>
+    <input type="text" id="poll-title" placeholder="e.g. Friday All-Hands" maxlength="60"
+           class="w-full rounded-xl bg-zinc-900 border border-zinc-800 px-4 py-3 text-lg
+                  focus:outline-none focus:ring-2 focus:ring-pollen focus:border-transparent transition">
+</div>
+<div class="mb-6">
+    <label class="block text-sm text-zinc-400 mb-1">Seconds per question</label>
+    <input type="text" inputmode="numeric" id="poll-duration" placeholder="20"
+           class="w-28 rounded-xl bg-zinc-900 border border-zinc-800 px-4 py-3 text-lg
+                  focus:outline-none focus:ring-2 focus:ring-pollen focus:border-transparent transition">
+</div>
+
+<div id="poll-questions"></div>
+<button type="button" onclick="addPollQuestion()"
+        class="w-full rounded-xl border border-dashed border-zinc-800 px-4 py-3 text-sm
+               text-zinc-500 hover:border-pollen hover:text-pollen transition">
+    + Add question
+</button>
+
+<div class="mt-6 flex flex-col items-center gap-3">
+    <button type="button" onclick="savePoll('{{.AdminBase}}')"
+            class="w-full rounded-xl bg-pollen text-zinc-950 font-semibold px-6 py-3.5 hover:bg-pollen/90 transition">
+        Save poll
+    </button>
+    {{if .Poll}}
+    <button type="button" onclick="cancelEditPoll()"
+            class="w-full rounded-xl bg-zinc-800 border border-zinc-700 px-6 py-3.5 hover:bg-zinc-700 transition">
+        Cancel
+    </button>
+    {{end}}
+</div>
+<div class="mt-4 flex items-center justify-center gap-4 text-sm">
+    <label class="text-zinc-400 hover:text-zinc-200 underline underline-offset-4 transition cursor-pointer">
+        Import JSON
+        <input type="file" accept="application/json,.json" class="hidden" onchange="importPollJSON(this)">
+    </label>
+    <span class="text-zinc-700">·</span>
+    <button type="button" onclick="exportPollJSON()"
+            class="text-zinc-400 hover:text-zinc-200 underline underline-offset-4 transition">
+        Export JSON
+    </button>
+</div>
+<div id="poll-error"></div>
+{{end}}
+
+{{define "admin_waiting"}}
+{{if .Poll}}
+<div class="text-center py-16" id="admin-ready">
+    <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">{{.Poll.EventTitle}}</h1>
+    <p class="mt-4 text-zinc-400">{{len .State.Participants}} participants joined</p>
+    <button hx-post="{{.AdminBase}}/start"
+            class="mt-10 rounded-xl bg-pollen text-zinc-950 font-semibold px-6 py-3.5 hover:bg-pollen/90 transition">
+        Start poll
+    </button>
+    <div>
+        <button type="button" onclick="showEditPoll()"
+                class="mt-4 text-sm text-zinc-400 hover:text-zinc-200 underline underline-offset-4 transition">
+            Edit poll
+        </button>
+    </div>
+</div>
+<div id="admin-edit" class="hidden text-left max-w-md mx-auto py-6">
+    {{template "poll_form" .}}
+</div>
+{{template "questions_preview" .}}
+{{else}}
+<div class="text-left max-w-md mx-auto py-10">
+    <div class="text-center mb-8">
+        <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">Pollinator</h1>
+        <p class="mt-4 text-zinc-400">Set up your poll to get started.</p>
+    </div>
+    {{template "poll_form" .}}
+</div>
+{{end}}
+{{end}}
+
+{{define "admin_question"}}
+<div class="text-center py-6">
+    <div class="flex items-center justify-between text-zinc-400 text-sm mb-6 max-w-md mx-auto">
+        <span>Question {{add1 .State.QuestionIndex}} of {{len .Poll.Questions}}</span>
+        <span><span data-countdown-end="{{.EndUnixMilli}}" class="font-mono text-pollen">{{.SecondsLeft}}</span>s</span>
+    </div>
+    <h2 class="text-2xl font-bold mb-8">{{.Question.Question}}</h2>
+    <div class="grid gap-3 max-w-md mx-auto text-left">
+        {{range .Question.Options}}
+        <div class="rounded-xl bg-zinc-900 border border-zinc-800 px-5 py-4 text-lg">{{.}}</div>
+        {{end}}
+    </div>
+</div>
+{{template "questions_preview" .}}
+{{end}}
+
+{{define "admin_results"}}
+<div class="text-center py-6">
+    <h2 class="text-2xl font-bold mb-8">{{.Question.Question}}</h2>
+    <div class="max-w-md mx-auto text-left">
+        {{template "results_bars" .Results}}
+    </div>
+    <div>
+        <button hx-post="{{.AdminBase}}/next"
+                class="mt-6 rounded-xl bg-pollen text-zinc-950 font-semibold px-6 py-3.5 hover:bg-pollen/90 transition">
+            {{if .IsLastQuestion}}Finish{{else}}Next question{{end}}
+        </button>
+    </div>
+    {{if not .IsLastQuestion}}
+    <button hx-post="{{.AdminBase}}/qr"
+            class="mt-4 text-sm text-zinc-400 hover:text-zinc-200 underline underline-offset-4 transition">
+        {{if .State.ShowQR}}Hide QR code{{else}}Show QR code{{end}}
+    </button>
+    {{end}}
+</div>
+{{template "questions_preview" .}}
+{{end}}
+
+{{define "admin_finished"}}
+<div class="text-center py-16">
+    <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">Poll complete</h1>
+    <div class="mt-10 flex flex-col items-center gap-3">
+        <a href="{{.AdminBase}}/download"
+           class="w-72 rounded-xl bg-pollen text-zinc-950 font-semibold px-6 py-3.5 hover:bg-pollen/90 transition">
+            Download results
+        </a>
+        <button hx-post="{{.AdminBase}}/reset"
+                hx-confirm="Resetting will permanently clear these results — make sure you've downloaded them first."
+                class="w-72 rounded-xl bg-zinc-800 border border-zinc-700 px-6 py-3.5 hover:bg-zinc-700 transition">
+            Reset
+        </button>
+    </div>
+</div>
+{{template "questions_preview" .}}
+{{end}}
