@@ -1,0 +1,11 @@
+{
+  "name": "pollinator",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./assets/input.css -o ./web/static/app.css --minify"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.1",
+    "tailwindcss": "^4.3.1"
+  }
+}
