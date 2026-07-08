@@ -1,0 +1,77 @@
+{{define "sse_wrapper"}}
+<div hx-ext="sse" sse-connect="{{.ConnectURL}}">
+    <div id="app" sse-swap="message" hx-swap="innerHTML">
+        {{.Inner}}
+    </div>
+</div>
+{{end}}
+
+{{define "waiting_dots"}}
+<span class="waiting-dots inline-flex gap-1 ml-1 align-middle" aria-hidden="true">
+    <span class="w-1.5 h-1.5 rounded-full bg-current inline-block"></span>
+    <span class="w-1.5 h-1.5 rounded-full bg-current inline-block"></span>
+    <span class="w-1.5 h-1.5 rounded-full bg-current inline-block"></span>
+</span>
+{{end}}
+
+{{define "qr_block"}}
+<div class="mt-10 inline-block rounded-2xl bg-white p-6">
+    <img src="{{.QRDataURI}}" alt="QR code to join" class="w-80 h-80 block">
+</div>
+<p class="mt-4 text-zinc-300 font-mono text-base">{{.JoinURL}}</p>
+{{end}}
+
+{{define "join_form"}}
+<div class="text-center py-16">
+    <p class="inline-flex items-center gap-2 text-pollen text-sm font-semibold tracking-widest uppercase mb-4">
+        <span class="w-2 h-2 rounded-full bg-pollen animate-pulse"></span>
+        Live poll
+    </p>
+    <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">{{.EventTitle}}</h1>
+    <form hx-post="/join" hx-target="#join-error" hx-swap="innerHTML"
+          class="mt-10 flex flex-col items-center gap-3">
+        <input name="alias" placeholder="Your name" autocomplete="off" required maxlength="20"
+               class="w-72 rounded-xl bg-zinc-900 border border-zinc-800 px-4 py-3.5 text-center text-lg
+                      focus:outline-none focus:ring-2 focus:ring-pollen focus:border-transparent transition">
+        <button type="submit"
+                class="w-72 rounded-xl bg-pollen text-zinc-950 font-semibold px-6 py-3.5 hover:bg-pollen/90 transition">
+            Join
+        </button>
+        <div id="join-error"></div>
+    </form>
+</div>
+{{end}}
+
+{{define "results_bars"}}
+<div class="space-y-3">
+    {{range .}}
+    <div>
+        <div class="flex justify-between text-sm mb-1">
+            <span>{{.Option}}</span>
+            <span class="text-zinc-400">{{.Count}} · {{.Percent}}%</span>
+        </div>
+        <div class="h-3 rounded-full bg-zinc-900 overflow-hidden">
+            <div class="h-full bg-nectar rounded-full transition-all duration-700 ease-out"
+                 style="width: {{.Percent}}%"></div>
+        </div>
+    </div>
+    {{end}}
+</div>
+{{end}}
+
+{{define "results_bars_large"}}
+<div class="space-y-6">
+    {{range .}}
+    <div>
+        <div class="flex justify-between text-xl mb-2">
+            <span>{{.Option}}</span>
+            <span class="text-zinc-400">{{.Count}} · {{.Percent}}%</span>
+        </div>
+        <div class="h-5 rounded-full bg-zinc-900 overflow-hidden">
+            <div class="h-full bg-nectar rounded-full transition-all duration-700 ease-out"
+                 style="width: {{.Percent}}%"></div>
+        </div>
+    </div>
+    {{end}}
+</div>
+{{end}}
