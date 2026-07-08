@@ -1,0 +1,37 @@
+{{define "base"}}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>{{.EventTitle}} · Pollinator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="icon" href="/static/favicon.svg">
+    <link rel="stylesheet" href="/static/app.css?v={{.AssetVer}}">
+
+    <!--
+      Pinned versions, not @latest — a version bump landing mid-event with
+      no warning is worse than a stale one. Both carry published SRI hashes
+      (from htmx.org's own docs) so a tampered or mismatched response fails
+      closed instead of silently executing. QR codes are generated
+      server-side (see internal/qr.go) — no client-side QR library at all.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js"
+            integrity="sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V"
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx-ext-sse@2.2.4"
+            integrity="sha384-A986SAtodyH8eg8x8irJnYUk7i9inVQqYigD6qZ9evobksGNIXfeFvDwLSHcp31N"
+            crossorigin="anonymous"></script>
+</head>
+
+<body class="bg-zinc-950 text-zinc-100 min-h-screen antialiased">
+
+<div class="max-w-3xl mx-auto px-6 py-10 sm:py-16">
+    {{.Content}}
+</div>
+
+<script src="/static/app.js"></script>
+
+</body>
+</html>
+{{end}}
