@@ -1,0 +1,70 @@
+{{define "participant_waiting"}}
+{{if not .Poll}}
+<div class="text-center py-16">
+    <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">Pollinator</h1>
+    <p class="mt-4 text-zinc-400">This event hasn't started yet — check back soon.</p>
+</div>
+{{else if .Participant}}
+<div class="text-center py-16">
+    <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">{{.EventTitle}}</h1>
+    <p class="mt-8 text-zinc-200">You're in, <span class="text-pollen">{{.Participant.Alias}}</span>!</p>
+    <p class="mt-1 text-zinc-400">Waiting for the host to start{{template "waiting_dots" .}}</p>
+</div>
+{{else}}
+{{template "join_form" .}}
+{{end}}
+{{end}}
+
+{{define "participant_question"}}
+{{if not .Participant}}
+{{template "join_form" .}}
+{{else if .Participant.Answered}}
+<div class="py-16 text-center text-zinc-400">
+    Locked in — waiting on everyone else to answer{{template "waiting_dots" .}}
+</div>
+{{else}}
+<div class="py-6">
+    <div class="flex items-center justify-between text-zinc-400 text-sm mb-6">
+        <span>Question {{add1 .State.QuestionIndex}} of {{len .Poll.Questions}}</span>
+        <span><span data-countdown-end="{{.EndUnixMilli}}" class="font-mono text-pollen">{{.SecondsLeft}}</span>s</span>
+    </div>
+    <h2 class="text-2xl font-bold mb-8 text-center">{{.Question.Question}}</h2>
+    <div class="grid gap-3">
+        {{range $i, $opt := .Question.Options}}
+        <button hx-post="/answer" hx-vals='{"choice": "{{$i}}"}' hx-target="#answer-error" hx-swap="innerHTML"
+                class="rounded-xl bg-zinc-900 border border-zinc-800 px-5 py-4 text-left text-lg
+                       hover:border-pollen hover:bg-zinc-800 transition">
+            {{$opt}}
+        </button>
+        {{end}}
+    </div>
+    <div id="answer-error"></div>
+</div>
+{{end}}
+{{end}}
+
+{{define "participant_results"}}
+{{if not .Participant}}
+{{template "join_form" .}}
+{{else}}
+<div class="py-6">
+    <h2 class="text-2xl font-bold mb-8 text-center">{{.Question.Question}}</h2>
+    {{template "results_bars" .Results}}
+    {{if not .IsLastQuestion}}
+    <p class="mt-8 text-zinc-400 text-center">
+        Waiting for the next question{{template "waiting_dots" .}}
+    </p>
+    {{end}}
+</div>
+{{end}}
+{{end}}
+
+{{define "participant_finished"}}
+<div class="text-center py-16">
+    <p class="inline-flex items-center gap-2 text-nectar text-sm font-semibold tracking-widest uppercase mb-4">
+        <span class="w-2 h-2 rounded-full bg-nectar"></span>
+        Poll ended
+    </p>
+    <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">Thanks for playing!</h1>
+</div>
+{{end}}
