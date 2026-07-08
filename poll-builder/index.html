@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pollinator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2309090b'/%3E%3Cpath d='M32 14 L46 22 V42 L32 50 L18 42 V22 Z' fill='none' stroke='%23f2b705' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='6' fill='%23f2b705'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #09090b;
+    --panel: #18181b;
+    --panel-2: #1f1f23;
+    --border: #27272a;
+    --text: #f4f4f5;
+    --muted: #a1a1aa;
+    --pollen: #f2b705;
+    --nectar: #14b8a6;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  header h1 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: calc(100vh - 62px);
+  }
+
+  @media (max-width: 860px) {
+    main { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    padding: 1.75rem;
+    overflow-y: auto;
+  }
+
+  .editor {
+    border-right: 1px solid var(--border);
+  }
+
+  @media (max-width: 860px) {
+    .editor { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+
+  .question-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 0.85rem;
+    padding: 1.1rem;
+    margin-bottom: 1rem;
+  }
+
+  .question-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.65rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    color: var(--text);
+    padding: 0.6rem 0.7rem;
+    font-size: 0.95rem;
+    font-family: inherit;
+  }
+
+  input[type="text"]:focus {
+    outline: none;
+    border-color: var(--pollen);
+  }
+
+  .q-block { margin-bottom: 0.85rem; }
+
+  .options-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.4rem;
+  }
+
+  .options-label .small.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .option-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .option-row input { flex: 1; }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    padding: 0.45rem 0.8rem;
+    font-size: 0.82rem;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+
+  button:hover { border-color: #3f3f46; }
+
+  button.primary {
+    background: var(--pollen);
+    color: #09090b;
+    border: none;
+    font-weight: 700;
+  }
+
+  button.primary:hover { background: #d9a604; }
+
+  button.ghost {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    padding: 0.2rem 0.4rem;
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  button.ghost:hover { color: #f87171; }
+
+  button.small { padding: 0.32rem 0.65rem; font-size: 0.75rem; }
+
+  .add-question {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px dashed var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  .add-question:hover { border-color: var(--pollen); color: var(--pollen); }
+
+  .convert-bar { margin-top: 1.25rem; }
+
+  .convert-bar button {
+    width: 100%;
+    padding: 0.85rem;
+    font-size: 0.95rem;
+  }
+
+  .output-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .output-header strong { font-size: 0.95rem; }
+
+  pre#output {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 0.85rem;
+    padding: 1.1rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    min-height: 220px;
+    margin: 0;
+    color: var(--text);
+  }
+
+  .status {
+    color: #f87171;
+    font-size: 0.8rem;
+    margin-top: 0.75rem;
+    min-height: 1.2em;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <svg width="26" height="26" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+    <rect width="64" height="64" rx="14" fill="#09090b"/>
+    <path d="M32 14 L46 22 V42 L32 50 L18 42 V22 Z" fill="none" stroke="#f2b705" stroke-width="3"/>
+    <circle cx="32" cy="32" r="6" fill="#f2b705"/>
+  </svg>
+  <h1>Pollinator</h1>
+</header>
+
+<main>
+  <section class="panel editor">
+    <div style="margin-bottom: 1rem;">
+      <label style="display:block; font-size:0.8rem; color: var(--muted); margin-bottom:0.3rem;">Event name</label>
+      <input type="text" id="pollTitle" placeholder="e.g. Friday All-Hands" maxlength="60">
+    </div>
+    <div style="margin-bottom: 1.25rem;">
+      <label style="display:block; font-size:0.8rem; color: var(--muted); margin-bottom:0.3rem;">Seconds per question</label>
+      <input type="text" id="pollDuration" placeholder="20" style="width: 8rem;">
+    </div>
+    <div id="questions"></div>
+    <button class="add-question" onclick="addQuestion()">+ Add question</button>
+    <div class="convert-bar">
+      <button class="primary" onclick="convert()">Convert to JSON</button>
+    </div>
+    <div style="text-align: center; margin-top: 0.75rem;">
+      <button class="small" style="background: transparent; border: none; color: var(--muted);" onclick="clearDraft()">Clear form</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="output-header">
+      <strong>POLL_JSON</strong>
+      <div style="display: flex; gap: 0.5rem;">
+        <button class="small" onclick="downloadOutput()">Download</button>
+        <button class="small" onclick="copyOutput()">Copy</button>
+      </div>
+    </div>
+    <pre id="output">Build your poll on the left, then click Convert.</pre>
+    <p class="status" id="status"></p>
+  </section>
+</main>
+
+<script>
+  const MAX_OPTIONS = 4;
+  const DRAFT_KEY = 'pollinator-draft';
+
+  // Saves whatever's currently in the form, valid or not — unlike
+  // convert(), this never blocks on validation, since the whole point is
+  // protecting an in-progress, possibly-incomplete draft from an
+  // accidental refresh. Wrapped in try/catch since localStorage can be
+  // unavailable (private browsing, some embedded preview contexts) —
+  // if so, this silently no-ops rather than breaking anything else.
+  function saveDraft() {
+    try {
+      const title = document.getElementById('pollTitle').value;
+      const duration = document.getElementById('pollDuration').value;
+      const questions = Array.from(document.querySelectorAll('.question-card')).map((card) => ({
+        question: card.querySelector('.q-text').value,
+        options: Array.from(card.querySelectorAll('.o-text')).map((o) => o.value),
+      }));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, duration, questions }));
+    } catch (e) {
+      // no-op — draft persistence just doesn't work here, nothing else depends on it
+    }
+  }
+
+  // Returns true if a draft was actually restored, so the caller knows
+  // whether it still needs to fall back to the default empty-question start.
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return false;
+      const draft = JSON.parse(raw);
+      if (!draft.questions || draft.questions.length === 0) return false;
+
+      document.getElementById('pollTitle').value = draft.title || '';
+      document.getElementById('pollDuration').value = draft.duration || 20;
+      draft.questions.forEach((q) => addQuestion(q.question, q.options));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function clearDraft() {
+    if (!window.confirm('Clear the current form and start a fresh poll?')) return;
+    try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* no-op */ }
+
+    document.getElementById('questions').innerHTML = '';
+    document.getElementById('pollTitle').value = '';
+    document.getElementById('pollDuration').value = 20;
+    addQuestion();
+
+    document.getElementById('output').textContent = 'Build your poll on the left, then click Convert.';
+    document.getElementById('status').textContent = '';
+  }
+  let uid = 0; // permanent, unique per card — only for wiring event handlers, never shown
+
+  function addQuestion(questionText, options) {
+    uid++;
+    const id = uid;
+
+    const card = document.createElement('div');
+    card.className = 'question-card';
+    card.dataset.id = String(id);
+    card.innerHTML = `
+      <div class="question-card-header">
+        <span class="question-label"></span>
+        <button class="ghost" title="Remove question" onclick="removeQuestion(${id})">&times;</button>
+      </div>
+      <div class="q-block">
+        <label>Question</label>
+        <input type="text" class="q-text" placeholder="e.g. Favourite language?">
+      </div>
+      <div class="options-label">
+        <label style="margin:0">Options (up to ${MAX_OPTIONS})</label>
+        <button class="small add-option" onclick="addOption(${id})">+ Add option</button>
+      </div>
+      <div class="options"></div>
+    `;
+    document.getElementById('questions').appendChild(card);
+    card.querySelector('.q-text').value = questionText || '';
+
+    const opts = (options && options.length) ? options : ['', ''];
+    opts.forEach((o) => addOption(id, o));
+
+    renumberQuestions();
+    saveDraft();
+  }
+
+  function addOption(questionId, value) {
+    const card = document.querySelector(`.question-card[data-id="${questionId}"]`);
+    const container = card.querySelector('.options');
+
+    if (container.children.length >= MAX_OPTIONS) return;
+
+    const row = document.createElement('div');
+    row.className = 'option-row';
+    row.innerHTML = `
+      <input type="text" class="o-text" placeholder="Option">
+      <button class="ghost" title="Remove option" onclick="removeOption(${questionId}, this)">&times;</button>
+    `;
+    container.appendChild(row);
+    row.querySelector('.o-text').value = value || '';
+
+    updateAddOptionState(card);
+    saveDraft();
+  }
+
+  function removeOption(questionId, btn) {
+    const card = document.querySelector(`.question-card[data-id="${questionId}"]`);
+    btn.parentElement.remove();
+    updateAddOptionState(card);
+    saveDraft();
+  }
+
+  function updateAddOptionState(card) {
+    const count = card.querySelectorAll('.o-text').length;
+    card.querySelector('.add-option').classList.toggle('disabled', count >= MAX_OPTIONS);
+  }
+
+  function removeQuestion(id) {
+    const card = document.querySelector(`.question-card[data-id="${id}"]`);
+    if (card) card.remove();
+    renumberQuestions();
+    saveDraft();
+  }
+
+  // Visible "Question N" labels always reflect current position in the
+  // list, recomputed after every add/remove — never the permanent uid,
+  // which only exists to wire up event handlers and was previously (wrongly)
+  // also used as the displayed number, causing it to drift from convert()'s
+  // own position-based numbering the moment anything was deleted.
+  function renumberQuestions() {
+    document.querySelectorAll('.question-card').forEach((card, i) => {
+      card.querySelector('.question-label').textContent = `Question ${i + 1}`;
+    });
+  }
+
+  function convert() {
+    const cards = document.querySelectorAll('.question-card');
+    const output = document.getElementById('output');
+    const status = document.getElementById('status');
+    status.textContent = '';
+
+    if (cards.length === 0) {
+      output.textContent = 'Add at least one question first.';
+      return;
+    }
+
+    const questions = [];
+    let error = null;
+
+    cards.forEach((card, i) => {
+      if (error) return;
+
+      const qText = card.querySelector('.q-text').value.trim();
+      const rawOptions = Array.from(card.querySelectorAll('.o-text')).map((el) => el.value.trim());
+
+      if (!qText) {
+        error = `Question ${i + 1} is missing its text.`;
+        return;
+      }
+      if (rawOptions.some((v) => v === '')) {
+        error = `Question ${i + 1} has an empty option — fill it in or remove it.`;
+        return;
+      }
+      if (rawOptions.length < 2) {
+        error = `Question ${i + 1} needs at least two options.`;
+        return;
+      }
+
+      questions.push({ question: qText, options: rawOptions });
+    });
+
+    if (error) {
+      output.textContent = error;
+      status.textContent = '';
+      return;
+    }
+
+    const title = document.getElementById('pollTitle').value.trim();
+    const duration = parseInt(document.getElementById('pollDuration').value.trim(), 10);
+
+    output.textContent = JSON.stringify({
+      title: title,
+      duration: duration > 0 ? duration : 20,
+      questions: questions
+    }, null, 2);
+  }
+
+  function copyOutput() {
+    const text = document.getElementById('output').textContent;
+    const status = document.getElementById('status');
+
+    function showCopied() {
+      status.style.color = 'var(--nectar)';
+      status.textContent = 'Copied to clipboard.';
+      setTimeout(() => { status.textContent = ''; status.style.color = ''; }, 2000);
+    }
+
+    function fallbackCopy() {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); showCopied(); } catch (e) { /* no-op */ }
+      document.body.removeChild(ta);
+    }
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(showCopied).catch(fallbackCopy);
+    } else {
+      fallbackCopy();
+    }
+  }
+
+  function downloadOutput() {
+    const text = document.getElementById('output').textContent;
+    const status = document.getElementById('status');
+
+    // Guard against downloading the placeholder text or an error message
+    // as if it were a real poll.json — only proceed if convert() actually
+    // produced JSON.
+    if (!text.trim().startsWith('{')) {
+      status.style.color = '#f87171';
+      status.textContent = 'Click Convert first (and fix any errors shown).';
+      setTimeout(() => { status.textContent = ''; status.style.color = ''; }, 2500);
+      return;
+    }
+
+    const blob = new Blob([text], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'poll.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Event delegation, not per-input listeners: question/option inputs are
+  // created dynamically, and this catches typing in all of them (present
+  // and future) from two listeners instead of needing to remember to wire
+  // up every new input as it's created.
+  document.getElementById('questions').addEventListener('input', saveDraft);
+  document.getElementById('pollTitle').addEventListener('input', saveDraft);
+  document.getElementById('pollDuration').addEventListener('input', saveDraft);
+
+  // Restore a saved draft if there is one; only start fresh if there isn't.
+  if (!loadDraft()) {
+    document.getElementById('pollDuration').value = 20;
+    addQuestion();
+  }
+</script>
+
+</body>
+</html>
