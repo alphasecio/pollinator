@@ -78,7 +78,26 @@ func NewApp(cfg *Config, logger *slog.Logger) (*App, error) {
 }
 
 func (a *App) Run() error {
-	return http.ListenAndServe(":"+a.cfg.Port, a.mux)
+	// Go's default http.Server has no timeouts at all, which leaves it open
+	// to slow-request resource exhaustion (Slowloris-style attacks send
+	// data at a trickle to hold connections open indefinitely). Setting
+	// ReadHeaderTimeout/ReadTimeout closes that off — legitimate requests
+	// here are all small (form posts, no uploads), so bounding how long
+	// they're allowed to take is safe.
+	//
+	// WriteTimeout is deliberately left unset: it would bound the entire
+	// response duration, not just headers, and every SSE connection is
+	// meant to stay open and writing for as long as a poll runs — setting
+	// it would silently kill every live connection once that duration
+	// elapsed, which is a functional regression, not a hardening.
+	srv := &http.Server{
+		Addr:              ":" + a.cfg.Port,
+		Handler:           a.mux,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+	return srv.ListenAndServe()
 }
 
 func (a *App) AdminURL() string {
