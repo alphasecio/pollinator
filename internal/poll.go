@@ -13,6 +13,8 @@ const (
 	minOptions = 2
 	maxOptions = 4 // matches the interaction model: full-width tappable buttons on
 	// a phone and at-a-glance result bars on a projector both degrade past this
+	maxQuestions = 50 // generous headroom over any real live poll — a sanity bound,
+	// not a real restriction, against an absurdly large submitted poll
 
 	maxTitleLength    = 60
 	maxQuestionLength = 200
@@ -76,6 +78,9 @@ func ValidatePoll(p *Poll) error {
 	}
 	if len(p.Questions) == 0 {
 		return fmt.Errorf("poll must contain at least one question")
+	}
+	if len(p.Questions) > maxQuestions {
+		return fmt.Errorf("poll has more than %d questions", maxQuestions)
 	}
 
 	for i := range p.Questions {
