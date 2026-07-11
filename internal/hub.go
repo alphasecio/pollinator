@@ -28,6 +28,13 @@ const (
 // actual enforcement.
 const maxAliasLength = 20
 
+// maxParticipants bounds unbounded growth from a scripted join-flood (each
+// request with no session cookie gets a fresh one, so there's otherwise no
+// natural limit) — generous enough that no real event ever approaches it,
+// while capping the worst case for both memory and the O(N) rendering cost
+// a broadcast does per subscriber (see broadcastAll).
+const maxParticipants = 500
+
 type joinRequest struct {
 	sessionID string
 	alias     string
@@ -423,6 +430,9 @@ func (h *Hub) handleJoin(sessionID, alias string) error {
 	if existing, ok := h.state.Participants[sessionID]; ok {
 		existing.Alias = alias // honor a changed name on reconnect, rather than silently keeping the old one
 		return nil
+	}
+	if len(h.state.Participants) >= maxParticipants {
+		return fmt.Errorf("this poll is full")
 	}
 	h.state.Participants[sessionID] = &Participant{
 		Alias:  alias,
