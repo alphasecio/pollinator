@@ -28,12 +28,14 @@ RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -o /pollinator ./cmd/pollinator
 
-FROM gcr.io/distroless/static-debian12
+FROM gcr.io/distroless/static-debian12:nonroot
 
 WORKDIR /
 
 COPY --from=build /pollinator /pollinator
 
 EXPOSE 8080
+
+USER nonroot:nonroot
 
 ENTRYPOINT ["/pollinator"]
