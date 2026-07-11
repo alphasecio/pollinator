@@ -23,12 +23,12 @@ func (a *App) indexPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) displayPage(w http.ResponseWriter, r *http.Request) {
-	a.hub.SetBaseURL(a.resolveBaseURL(r))
 	sessionID := getOrCreateSession(w, r)
 	a.renderSSEPage(w, "/display/events", a.hub.Snapshot(RoleDisplay, sessionID))
 }
 
 func (a *App) adminPage(w http.ResponseWriter, r *http.Request) {
+	a.hub.SetBaseURL(a.resolveBaseURL(r))
 	sessionID := getOrCreateSession(w, r)
 	a.renderSSEPage(w, a.AdminURL()+"/events", a.hub.Snapshot(RoleAdmin, sessionID))
 }
