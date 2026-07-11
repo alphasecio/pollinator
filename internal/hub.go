@@ -324,9 +324,11 @@ func (h *Hub) SetPoll(poll *Poll) error {
 }
 
 // SetBaseURL is fire-and-forget on purpose (no reply channel) — it's
-// called on essentially every request to display, and the caller doesn't
-// need to wait for it; the hub applies it (or no-ops if unchanged) in its
-// own time.
+// called on admin page loads and reconnects (see handlers.go/sse.go —
+// deliberately not on display, which is unauthenticated and would let
+// anyone poison the cached domain via a spoofed Host header before a
+// legitimate request ever arrives), and the caller doesn't need to wait
+// for it; the hub applies it (or no-ops if unchanged) in its own time.
 func (h *Hub) SetBaseURL(baseURL string) {
 	h.setBaseURLCh <- setBaseURLRequest{baseURL: baseURL}
 }
@@ -413,13 +415,14 @@ func (h *Hub) handleJoin(sessionID, alias string) error {
 	if err := validateAlias(alias); err != nil {
 		return err
 	}
-	if _, ok := h.state.Participants[sessionID]; ok {
-		return nil // reconnect with an existing session: no-op
-	}
-	for _, p := range h.state.Participants {
-		if strings.EqualFold(p.Alias, alias) {
+	for otherID, p := range h.state.Participants {
+		if otherID != sessionID && strings.EqualFold(p.Alias, alias) {
 			return fmt.Errorf("%q is already taken — try another name", alias)
 		}
+	}
+	if existing, ok := h.state.Participants[sessionID]; ok {
+		existing.Alias = alias // honor a changed name on reconnect, rather than silently keeping the old one
+		return nil
 	}
 	h.state.Participants[sessionID] = &Participant{
 		Alias:  alias,
