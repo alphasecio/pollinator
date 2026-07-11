@@ -26,7 +26,7 @@
 <div class="py-6">
     <div class="flex items-center justify-between text-zinc-400 text-sm mb-6">
         <span>Question {{add1 .State.QuestionIndex}} of {{len .Poll.Questions}}</span>
-        <span><span data-countdown-end="{{.EndUnixMilli}}" class="font-mono text-pollen">{{.SecondsLeft}}</span>s</span>
+        <span><span data-countdown-end="{{.EndUnixMilli}}" data-seconds-left="{{.SecondsLeft}}" class="font-mono text-pollen">{{.SecondsLeft}}</span>s</span>
     </div>
     <h2 class="text-2xl font-bold mb-8 text-center">{{.Question.Question}}</h2>
     <div class="grid gap-3">
