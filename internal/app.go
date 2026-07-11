@@ -92,12 +92,31 @@ func (a *App) Run() error {
 	// elapsed, which is a functional regression, not a hardening.
 	srv := &http.Server{
 		Addr:              ":" + a.cfg.Port,
-		Handler:           a.mux,
+		Handler:           securityHeaders(a.mux),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
 	return srv.ListenAndServe()
+}
+
+// securityHeaders is deliberately narrow — these three are safe to set
+// unconditionally with zero risk of breaking anything the app actually
+// does. A real Content-Security-Policy would be worth having too, but
+// isn't included here: getting one right requires verifying it against a
+// real browser (the QR code is a data: URI <img>, and htmx loads from a
+// CDN — either could silently break under a misconfigured policy), which
+// isn't something to guess at without being able to test it.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Admin has real one-click state-changing actions (Reset, Start,
+		// ToggleQR) — exactly what clickjacking targets by embedding the
+		// page in an invisible iframe.
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Referrer-Policy", "same-origin")
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (a *App) AdminURL() string {
@@ -116,13 +135,9 @@ func (a *App) resolveBaseURL(r *http.Request) string {
 		return a.baseURL
 	}
 
-	scheme := r.Header.Get("X-Forwarded-Proto")
-	if scheme == "" {
-		if r.TLS != nil {
-			scheme = "https"
-		} else {
-			scheme = "http"
-		}
+	scheme := "http"
+	if isSecureRequest(r) {
+		scheme = "https"
 	}
 	a.baseURL = scheme + "://" + r.Host
 	return a.baseURL
