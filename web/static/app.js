@@ -113,6 +113,15 @@ function maybePlayCountdownSound(end, secondsLeft) {
 // orphaned left ticking in the background.
 let countdownIntervalId = null;
 
+// countdownDeadline/countdownEndKey persist at module scope, alongside
+// lastTickSecond/lastTickEnd above, for the same reason: #app can remount
+// many times over one question's lifetime, and re-deriving the deadline on
+// every remount is both unnecessary and, if it ever used Date.now() as
+// anything other than a one-time anchor, would reintroduce exactly the
+// clock-comparison problem being fixed here.
+let countdownDeadline = null;
+let countdownEndKey = null;
+
 function tickCountdowns() {
     if (countdownIntervalId) {
         clearInterval(countdownIntervalId);
@@ -122,7 +131,24 @@ function tickCountdowns() {
     const el = document.querySelector("[data-countdown-end]");
     if (!el) return;
 
+    // 'end' (the server's absolute deadline) is used only as a stable
+    // identity — to detect "is this the same question as last render" —
+    // never compared against the client's own clock for timing. Comparing
+    // an absolute server timestamp against the client's Date.now() is
+    // exactly what breaks if the two clocks disagree, even by a few
+    // seconds, which is common enough on real devices to matter.
+    //
+    // Timing instead comes from the server's already-relative SecondsLeft:
+    // anchoring "SecondsLeft more seconds from right now" only needs the
+    // client's own clock to progress normally, which is true even if its
+    // absolute reading is wrong — there's no cross-clock comparison at all
+    // after this one-time anchor.
     const end = parseInt(el.dataset.countdownEnd, 10);
+    if (end !== countdownEndKey) {
+        countdownEndKey = end;
+        const serverSecondsLeft = parseInt(el.dataset.secondsLeft, 10);
+        countdownDeadline = Date.now() + serverSecondsLeft * 1000;
+    }
 
     const update = () => {
         const current = document.querySelector("[data-countdown-end]");
@@ -131,7 +157,7 @@ function tickCountdowns() {
             countdownIntervalId = null;
             return;
         }
-        const secondsLeft = Math.max(0, Math.round((end - Date.now()) / 1000));
+        const secondsLeft = Math.max(0, Math.round((countdownDeadline - Date.now()) / 1000));
         current.textContent = secondsLeft;
         maybePlayCountdownSound(end, secondsLeft);
 
@@ -283,7 +309,14 @@ function loadPollSeed() {
     let seed = null;
     if (seedEl && seedEl.dataset.seed) {
         try {
-            seed = JSON.parse(atob(seedEl.dataset.seed));
+            // atob() decodes base64 into a string where each character is
+            // one raw byte (Latin-1 style) — not proper UTF-8. Any emoji or
+            // non-Latin text in the poll would otherwise corrupt into
+            // mojibake or throw entirely. TextDecoder reassembles those
+            // raw bytes into the real UTF-8 string first.
+            const raw = atob(seedEl.dataset.seed);
+            const bytes = Uint8Array.from(raw, (c) => c.charCodeAt(0));
+            seed = JSON.parse(new TextDecoder().decode(bytes));
         } catch (e) {
             seed = null;
         }

@@ -20,7 +20,7 @@ func (a *App) serveEvents(role Role) http.HandlerFunc {
 
 		sessionID := getOrCreateSession(w, r)
 
-		if role == RoleDisplay {
+		if role == RoleAdmin {
 			a.hub.SetBaseURL(a.resolveBaseURL(r))
 		}
 
