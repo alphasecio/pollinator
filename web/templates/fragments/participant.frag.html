@@ -32,8 +32,8 @@
     <div class="grid gap-3">
         {{range $i, $opt := .Question.Options}}
         <button hx-post="/answer" hx-vals='{"choice": "{{$i}}"}' hx-target="#answer-error" hx-swap="innerHTML"
-                class="rounded-xl bg-zinc-900 border border-zinc-800 px-5 py-4 text-left text-lg
-                       hover:border-pollen hover:bg-zinc-800 transition">
+                class="rounded-xl bg-zinc-900 border-2 px-5 py-4 text-left text-lg
+                       transition {{template "option_button_classes" $i}}">
             {{$opt}}
         </button>
         {{end}}
