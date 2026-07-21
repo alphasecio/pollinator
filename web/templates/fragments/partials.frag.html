@@ -43,16 +43,16 @@
 {{end}}
 
 {{define "results_bars"}}
-<div class="space-y-3">
-    {{range .}}
+<div class="space-y-4">
+    {{range $i, $row := .}}
     <div>
-        <div class="flex justify-between text-sm mb-1">
-            <span>{{.Option}}</span>
-            <span class="text-zinc-400">{{.Count}} · {{.Percent}}%</span>
+        <div class="flex justify-between items-start gap-3 text-sm mb-1">
+            <span class="flex-1">{{$row.Option}}</span>
+            <span class="text-zinc-400 shrink-0 whitespace-nowrap">{{$row.Count}} · {{$row.Percent}}%</span>
         </div>
         <div class="h-3 rounded-full bg-zinc-900 overflow-hidden">
-            <div class="h-full bg-nectar rounded-full transition-all duration-700 ease-out"
-                 style="width: {{.Percent}}%"></div>
+            <div class="h-full rounded-full transition-all duration-700 ease-out {{if eq (mod $i 2) 0}}bg-nectar{{else}}bg-nectar/60{{end}}"
+                 style="width: {{$row.Percent}}%"></div>
         </div>
     </div>
     {{end}}
@@ -60,16 +60,16 @@
 {{end}}
 
 {{define "results_bars_large"}}
-<div class="space-y-6">
-    {{range .}}
+<div class="space-y-7">
+    {{range $i, $row := .}}
     <div>
-        <div class="flex justify-between text-xl mb-2">
-            <span>{{.Option}}</span>
-            <span class="text-zinc-400">{{.Count}} · {{.Percent}}%</span>
+        <div class="flex justify-between items-start gap-4 text-xl mb-2">
+            <span class="flex-1">{{$row.Option}}</span>
+            <span class="text-zinc-400 shrink-0 whitespace-nowrap">{{$row.Count}} · {{$row.Percent}}%</span>
         </div>
         <div class="h-5 rounded-full bg-zinc-900 overflow-hidden">
-            <div class="h-full bg-nectar rounded-full transition-all duration-700 ease-out"
-                 style="width: {{.Percent}}%"></div>
+            <div class="h-full rounded-full transition-all duration-700 ease-out {{if eq (mod $i 2) 0}}bg-nectar{{else}}bg-nectar/60{{end}}"
+                 style="width: {{$row.Percent}}%"></div>
         </div>
     </div>
     {{end}}
