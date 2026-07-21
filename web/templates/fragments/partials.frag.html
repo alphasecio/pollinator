@@ -43,13 +43,18 @@
 {{end}}
 
 {{/*
-  Per-option color identity — red/blue/orange/purple, deliberately not
-  reusing pollen (amber, means "action" everywhere else) or nectar (teal,
-  means "results" everywhere else). The same index always maps to the
-  same color in both places these are used: the answer screen and the
-  results screen iterate the same Options array in the same order, so
-  "the option you tapped" and "its bar in the results" stay visually
-  tied together with no extra state to track — position alone is enough.
+  Per-option color identity — red/blue/yellow/green, the actual Kahoot
+  palette. Yellow does land close to pollen (amber, "action" everywhere
+  else) visually, but pollen never appears as a button on the screens
+  these colors show up on — the participant answer screen and both
+  results views — only the countdown number does, which reads as clearly
+  distinct in context (a monospace digit, not a bordered option card).
+
+  The same index always maps to the same color in both places these are
+  used: the answer screen and the results screen iterate the same
+  Options array in the same order, so "the option you tapped" and "its
+  bar in the results" stay visually tied together with no extra state to
+  track — position alone is enough.
 
   Three separate partials, each emitting one complete, literal Tailwind
   class string per branch, rather than building a class name dynamically.
@@ -57,11 +62,11 @@
   build time — a dynamically-assembled class name is invisible to that
   scan, so the CSS for it would simply never get generated.
 */}}
-{{define "option_button_classes"}}{{if eq . 0}}border-red-500 hover:bg-red-500/10{{else if eq . 1}}border-blue-500 hover:bg-blue-500/10{{else if eq . 2}}border-orange-500 hover:bg-orange-500/10{{else}}border-purple-500 hover:bg-purple-500/10{{end}}{{end}}
+{{define "option_button_classes"}}{{if eq . 0}}border-red-500 hover:bg-red-500/10{{else if eq . 1}}border-blue-500 hover:bg-blue-500/10{{else if eq . 2}}border-yellow-500 hover:bg-yellow-500/10{{else}}border-green-500 hover:bg-green-500/10{{end}}{{end}}
 
-{{define "option_border_class"}}{{if eq . 0}}border-red-500{{else if eq . 1}}border-blue-500{{else if eq . 2}}border-orange-500{{else}}border-purple-500{{end}}{{end}}
+{{define "option_border_class"}}{{if eq . 0}}border-red-500{{else if eq . 1}}border-blue-500{{else if eq . 2}}border-yellow-500{{else}}border-green-500{{end}}{{end}}
 
-{{define "option_bg_class"}}{{if eq . 0}}bg-red-500{{else if eq . 1}}bg-blue-500{{else if eq . 2}}bg-orange-500{{else}}bg-purple-500{{end}}{{end}}
+{{define "option_bg_class"}}{{if eq . 0}}bg-red-500{{else if eq . 1}}bg-blue-500{{else if eq . 2}}bg-yellow-500{{else}}bg-green-500{{end}}{{end}}
 
 {{define "results_bars"}}
 <div class="space-y-4">
