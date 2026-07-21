@@ -28,7 +28,7 @@
         <span>Question {{add1 .State.QuestionIndex}} of {{len .Poll.Questions}}</span>
         <span><span data-countdown-end="{{.EndUnixMilli}}" data-seconds-left="{{.SecondsLeft}}" class="font-mono text-pollen">{{.SecondsLeft}}</span>s</span>
     </div>
-    <h2 class="text-2xl font-bold mb-8 text-center">{{.Question.Question}}</h2>
+    <h2 class="text-2xl font-bold mb-8 text-left">{{.Question.Question}}</h2>
     <div class="grid gap-3">
         {{range $i, $opt := .Question.Options}}
         <button hx-post="/answer" hx-vals='{"choice": "{{$i}}"}' hx-target="#answer-error" hx-swap="innerHTML"
@@ -48,7 +48,7 @@
 {{template "join_form" .}}
 {{else}}
 <div class="py-6">
-    <h2 class="text-2xl font-bold mb-8 text-center">{{.Question.Question}}</h2>
+    <h2 class="text-2xl font-bold mb-8 text-left">{{.Question.Question}}</h2>
     {{template "results_bars" .Results}}
     {{if not .IsLastQuestion}}
     <p class="mt-8 text-zinc-400 text-center">
