@@ -119,7 +119,7 @@
         <span>Question {{add1 .State.QuestionIndex}} of {{len .Poll.Questions}}</span>
         <span><span data-countdown-end="{{.EndUnixMilli}}" data-seconds-left="{{.SecondsLeft}}" class="font-mono text-pollen">{{.SecondsLeft}}</span>s</span>
     </div>
-    <h2 class="text-2xl font-bold mb-8">{{.Question.Question}}</h2>
+    <h2 class="text-2xl font-bold mb-8 text-left">{{.Question.Question}}</h2>
     <div class="grid gap-3 max-w-md mx-auto text-left">
         {{range .Question.Options}}
         <div class="rounded-xl bg-zinc-900 border border-zinc-800 px-5 py-4 text-lg">{{.}}</div>
@@ -131,7 +131,7 @@
 
 {{define "admin_results"}}
 <div class="text-center py-6">
-    <h2 class="text-2xl font-bold mb-8">{{.Question.Question}}</h2>
+    <h2 class="text-2xl font-bold mb-8 text-left">{{.Question.Question}}</h2>
     <div class="max-w-md mx-auto text-left">
         {{template "results_bars" .Results}}
     </div>
