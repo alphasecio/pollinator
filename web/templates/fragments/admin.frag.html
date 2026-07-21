@@ -21,9 +21,9 @@
             {{range $i, $q := .Poll.Questions}}
             <li class="border-b border-zinc-800 pb-5 last:border-0 last:pb-0">
                 <p class="text-zinc-200 font-medium mb-2">{{add1 $i}}. {{$q.Question}}</p>
-                <ul class="space-y-1">
+                <ul class="space-y-1 list-disc list-inside marker:text-zinc-600">
                     {{range $q.Options}}
-                    <li class="text-zinc-500 text-sm pl-4">{{.}}</li>
+                    <li class="text-zinc-500 text-sm">{{.}}</li>
                     {{end}}
                 </ul>
             </li>
