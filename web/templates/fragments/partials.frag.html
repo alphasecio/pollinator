@@ -42,6 +42,27 @@
 </div>
 {{end}}
 
+{{/*
+  Per-option color identity — red/blue/orange/purple, deliberately not
+  reusing pollen (amber, means "action" everywhere else) or nectar (teal,
+  means "results" everywhere else). The same index always maps to the
+  same color in both places these are used: the answer screen and the
+  results screen iterate the same Options array in the same order, so
+  "the option you tapped" and "its bar in the results" stay visually
+  tied together with no extra state to track — position alone is enough.
+
+  Three separate partials, each emitting one complete, literal Tailwind
+  class string per branch, rather than building a class name dynamically.
+  Tailwind discovers classes by scanning source files for literal text at
+  build time — a dynamically-assembled class name is invisible to that
+  scan, so the CSS for it would simply never get generated.
+*/}}
+{{define "option_button_classes"}}{{if eq . 0}}border-red-500 hover:bg-red-500/10{{else if eq . 1}}border-blue-500 hover:bg-blue-500/10{{else if eq . 2}}border-orange-500 hover:bg-orange-500/10{{else}}border-purple-500 hover:bg-purple-500/10{{end}}{{end}}
+
+{{define "option_border_class"}}{{if eq . 0}}border-red-500{{else if eq . 1}}border-blue-500{{else if eq . 2}}border-orange-500{{else}}border-purple-500{{end}}{{end}}
+
+{{define "option_bg_class"}}{{if eq . 0}}bg-red-500{{else if eq . 1}}bg-blue-500{{else if eq . 2}}bg-orange-500{{else}}bg-purple-500{{end}}{{end}}
+
 {{define "results_bars"}}
 <div class="space-y-4">
     {{range $i, $row := .}}
@@ -51,7 +72,7 @@
             <span class="text-zinc-400 shrink-0 whitespace-nowrap">{{$row.Count}} · {{$row.Percent}}%</span>
         </div>
         <div class="h-3 rounded-full bg-zinc-900 overflow-hidden">
-            <div class="h-full rounded-full transition-all duration-700 ease-out {{if eq (mod $i 2) 0}}bg-nectar{{else}}bg-nectar/60{{end}}"
+            <div class="h-full rounded-full transition-all duration-700 ease-out {{template "option_bg_class" $i}}"
                  style="width: {{$row.Percent}}%"></div>
         </div>
     </div>
@@ -68,7 +89,7 @@
             <span class="text-zinc-400 shrink-0 whitespace-nowrap">{{$row.Count}} · {{$row.Percent}}%</span>
         </div>
         <div class="h-5 rounded-full bg-zinc-900 overflow-hidden">
-            <div class="h-full rounded-full transition-all duration-700 ease-out {{if eq (mod $i 2) 0}}bg-nectar{{else}}bg-nectar/60{{end}}"
+            <div class="h-full rounded-full transition-all duration-700 ease-out {{template "option_bg_class" $i}}"
                  style="width: {{$row.Percent}}%"></div>
         </div>
     </div>
