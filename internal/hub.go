@@ -235,7 +235,7 @@ func (h *Hub) Run(ctx context.Context) {
 			reply <- nil
 
 		case req := <-h.setPollCh:
-			if h.state.Phase != PhaseWaiting {
+			if h.state.Phase != PhaseWaiting && h.state.Phase != PhaseFinished {
 				req.reply <- fmt.Errorf("can't edit the poll while it's running")
 			} else {
 				h.poll = req.poll
@@ -319,11 +319,15 @@ func (h *Hub) ToggleQR() error {
 	return <-reply
 }
 
-// SetPoll replaces the poll wholesale — used both for the very first setup
-// (poll was nil) and for editing an existing one after Reset. It only
-// succeeds while Phase is Waiting; the error path exists so a stray
-// request can't slip through if it somehow arrives right at a phase
-// transition, not just because the UI hides the form once running.
+// SetPoll replaces the poll wholesale — used for the very first setup
+// (poll was nil), editing an existing one after Reset, or editing
+// directly from the Finished screen once an event has wrapped up (no
+// Reset needed just to fix something — Reset keeps meaning exactly one
+// thing, "clear this run and open the next one," rather than also being
+// the only path to editing). It only succeeds while Phase is Waiting or
+// Finished — never while a poll is actually running — so a stray request
+// can't slip through mid-event even if it somehow arrives right at a
+// phase transition, not just because the UI hides the form otherwise.
 func (h *Hub) SetPoll(poll *Poll) error {
 	reply := make(chan error, 1)
 	h.setPollCh <- setPollRequest{poll: poll, reply: reply}
@@ -513,7 +517,7 @@ func (h *Hub) handleTimerExpiry() {
 }
 
 // recordResult permanently snapshots the question that's just closing.
-// h.state.Answers only ever holds the *current* question's live tally and
+// h.state.Answers only ever holds the *current* question's live counts and
 // gets overwritten by the next beginQuestion, so this is the one place
 // final, all-question results survive for the download-results feature.
 func (h *Hub) recordResult() {
