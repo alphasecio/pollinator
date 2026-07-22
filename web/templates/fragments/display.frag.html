@@ -38,7 +38,7 @@
         <span data-countdown-end="{{.EndUnixMilli}}" data-seconds-left="{{.SecondsLeft}}">{{.SecondsLeft}}</span>
     </div>
     <h2 class="text-4xl font-bold mb-10 text-left">{{.Question.Question}}</h2>
-    <div class="grid gap-3 max-w-xl mx-auto text-left">
+    <div class="grid gap-3 max-w-2xl mx-auto text-left">
         {{range $i, $opt := .Question.Options}}
         <div class="rounded-xl bg-zinc-900 border-2 px-5 py-4 text-xl {{template "option_border_class" $i}}">{{$opt}}</div>
         {{end}}
