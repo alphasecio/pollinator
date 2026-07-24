@@ -1,12 +1,21 @@
 name: Publish Docker image
 
-# Triggered by pushing a version tag (e.g. `git tag v1.0.0 && git push --tags`),
-# not on every push to main — self-hosters pulling this image want a stable,
-# predictable version to pin to, not whatever the latest commit happens to be.
+# Triggered by pushing a version tag (e.g. `git tag v1.0.0 && git push --tags`,
+# or publishing a GitHub Release with a new tag through the web UI) — not on
+# every push to main, since self-hosters pulling this image want a stable,
+# predictable version to pin to, not whatever the latest commit happens to
+# be. workflow_dispatch is a second, manual way in: a "Run workflow" button
+# in the Actions tab, useful for testing without committing to a real tag.
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version for the image tag (e.g. 1.0.0, no leading v)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -36,9 +45,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract version from tag
+      - name: Determine version
         id: version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build and push (linux/amd64 + linux/arm64)
         uses: docker/build-push-action@v5
