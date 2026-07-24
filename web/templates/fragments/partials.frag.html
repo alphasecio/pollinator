@@ -44,11 +44,13 @@
 
 {{/*
   Per-option color identity — red/blue/yellow/green, the actual Kahoot
-  palette. Yellow does land close to pollen (amber, "action" everywhere
-  else) visually, but pollen never appears as a button on the screens
-  these colors show up on — the participant answer screen and both
-  results views — only the countdown number does, which reads as clearly
-  distinct in context (a monospace digit, not a bordered option card).
+  palette, rendered as full solid fills (not just a border accent) to
+  match Kahoot's own tile treatment, which people already recognize.
+  Yellow does land close to pollen (amber, "action" everywhere else)
+  visually, but pollen never appears as a button on the screens these
+  colors show up on — the participant answer screen and both results
+  views — only the countdown number does, which reads as clearly
+  distinct in context (a monospace digit, not a filled option card).
 
   The same index always maps to the same color in both places these are
   used: the answer screen and the results screen iterate the same
@@ -56,15 +58,22 @@
   bar in the results" stay visually tied together with no extra state to
   track — position alone is enough.
 
-  Three separate partials, each emitting one complete, literal Tailwind
-  class string per branch, rather than building a class name dynamically.
-  Tailwind discovers classes by scanning source files for literal text at
-  build time — a dynamically-assembled class name is invisible to that
-  scan, so the CSS for it would simply never get generated.
+  Each partial emits complete, literal Tailwind class strings per
+  branch, rather than building a class name dynamically. Tailwind
+  discovers classes by scanning source files for literal text at build
+  time — a dynamically-assembled class name is invisible to that scan,
+  so the CSS for it would simply never get generated.
 */}}
-{{define "option_button_classes"}}{{if eq . 0}}border-red-500 hover:bg-red-500/10{{else if eq . 1}}border-blue-500 hover:bg-blue-500/10{{else if eq . 2}}border-yellow-500 hover:bg-yellow-500/10{{else}}border-green-500 hover:bg-green-500/10{{end}}{{end}}
+{{/*
+  option_fill_classes pairs each color with a text color chosen for
+  contrast, not just picked to match: red/blue are saturated enough for
+  white text to read clearly, but yellow/green are bright enough that
+  white text would have poor contrast there — dark text instead, same
+  choice Kahoot itself makes on its own yellow/green tiles.
+*/}}
+{{define "option_fill_classes"}}{{if eq . 0}}bg-red-500 text-white{{else if eq . 1}}bg-blue-500 text-white{{else if eq . 2}}bg-yellow-500 text-zinc-950{{else}}bg-green-500 text-zinc-950{{end}}{{end}}
 
-{{define "option_border_class"}}{{if eq . 0}}border-red-500{{else if eq . 1}}border-blue-500{{else if eq . 2}}border-yellow-500{{else}}border-green-500{{end}}{{end}}
+{{define "option_button_classes"}}{{template "option_fill_classes" .}} hover:opacity-90{{end}}
 
 {{define "option_bg_class"}}{{if eq . 0}}bg-red-500{{else if eq . 1}}bg-blue-500{{else if eq . 2}}bg-yellow-500{{else}}bg-green-500{{end}}{{end}}
 
@@ -86,14 +95,14 @@
 {{end}}
 
 {{define "results_bars_large"}}
-<div class="space-y-8">
+<div class="space-y-5">
     {{range $i, $row := .}}
     <div>
-        <div class="flex justify-between items-start gap-4 text-3xl mb-3">
+        <div class="flex justify-between items-start gap-4 text-2xl mb-2">
             <span class="flex-1">{{$row.Option}}</span>
             <span class="text-zinc-400 shrink-0 whitespace-nowrap">{{$row.Count}} · {{$row.Percent}}%</span>
         </div>
-        <div class="h-7 rounded-full bg-zinc-900 overflow-hidden">
+        <div class="h-6 rounded-full bg-zinc-900 overflow-hidden">
             <div class="h-full rounded-full transition-all duration-700 ease-out {{template "option_bg_class" $i}}"
                  style="width: {{$row.Percent}}%"></div>
         </div>
