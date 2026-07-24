@@ -122,7 +122,7 @@
     <h2 class="text-2xl font-bold mb-8 text-left">{{.Question.Question}}</h2>
     <div class="grid gap-3 text-left">
         {{range $i, $opt := .Question.Options}}
-        <div class="rounded-xl bg-zinc-900 border-2 px-5 py-4 text-lg {{template "option_border_class" $i}}">{{$opt}}</div>
+        <div class="rounded-xl px-5 py-4 text-lg font-medium {{template "option_fill_classes" $i}}">{{$opt}}</div>
         {{end}}
     </div>
 </div>
