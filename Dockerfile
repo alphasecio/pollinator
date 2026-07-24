@@ -25,7 +25,9 @@ COPY --from=css /app/web/static/app.css ./web/static/app.css
 # Dockerfile changing to invalidate it.
 RUN go mod tidy
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+ARG TARGETOS
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -o /pollinator ./cmd/pollinator
 
 FROM gcr.io/distroless/static-debian12:nonroot
