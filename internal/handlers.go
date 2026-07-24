@@ -19,25 +19,26 @@ import (
 
 func (a *App) indexPage(w http.ResponseWriter, r *http.Request) {
 	sessionID := getOrCreateSession(w, r)
-	a.renderSSEPage(w, "/events", a.hub.Snapshot(RoleParticipant, sessionID))
+	a.renderSSEPage(w, "/events", a.hub.Snapshot(RoleParticipant, sessionID), false)
 }
 
 func (a *App) displayPage(w http.ResponseWriter, r *http.Request) {
 	sessionID := getOrCreateSession(w, r)
-	a.renderSSEPage(w, "/display/events", a.hub.Snapshot(RoleDisplay, sessionID))
+	a.renderSSEPage(w, "/display/events", a.hub.Snapshot(RoleDisplay, sessionID), true)
 }
 
 func (a *App) adminPage(w http.ResponseWriter, r *http.Request) {
 	a.hub.SetBaseURL(a.resolveBaseURL(r))
 	sessionID := getOrCreateSession(w, r)
-	a.renderSSEPage(w, a.AdminURL()+"/events", a.hub.Snapshot(RoleAdmin, sessionID))
+	a.renderSSEPage(w, a.AdminURL()+"/events", a.hub.Snapshot(RoleAdmin, sessionID), false)
 }
 
 // renderSSEPage wraps an already-rendered hub fragment in the SSE-connected
 // container and hands the result to renderBase. This is the one place that
 // knows join/display/admin share identical wiring and differ only in which
-// endpoint they connect to.
-func (a *App) renderSSEPage(w http.ResponseWriter, connectURL, inner string) {
+// endpoint they connect to (and now, whether the page wants the wider
+// container — see renderBase).
+func (a *App) renderSSEPage(w http.ResponseWriter, connectURL, inner string, wide bool) {
 	var buf bytes.Buffer
 	err := a.templates.ExecuteTemplate(&buf, "sse_wrapper", map[string]any{
 		"ConnectURL": connectURL,
@@ -48,14 +49,20 @@ func (a *App) renderSSEPage(w http.ResponseWriter, connectURL, inner string) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	a.renderBase(w, template.HTML(buf.String()))
+	a.renderBase(w, template.HTML(buf.String()), wide)
 }
 
-func (a *App) renderBase(w http.ResponseWriter, content template.HTML) {
+// wide widens base.html's single global page container for /display only —
+// join and admin are read up close (a phone, a laptop), where the existing
+// narrower column is correct; display is read from across a room, where
+// that same 768px cap was quietly capping every width increase made to the
+// templates inside it, regardless of what those templates asked for.
+func (a *App) renderBase(w http.ResponseWriter, content template.HTML, wide bool) {
 	data := map[string]any{
 		"EventTitle": a.hub.EventTitle(),
 		"Content":    content,
 		"AssetVer":   a.assetVer,
+		"Wide":       wide,
 	}
 	if err := a.templates.ExecuteTemplate(w, "base", data); err != nil {
 		a.logger.Error("render page failed", "error", err)
