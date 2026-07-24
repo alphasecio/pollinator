@@ -12,6 +12,8 @@ state, ephemeral by design: restarting the container starts a fresh poll.
 - Import/export a poll as JSON, plus a standalone offline poll-builder tool
 - Real-time join, answer, and results via server-sent events — no polling,
   no page refreshes
+- Kahoot-style color-coded answer options, carried through consistently
+  from the answer screen to the results screen
 - Synthesized countdown sound on `/display` — no licensed audio, no mute
   control needed
 - QR code and short-link join flow, toggleable on `/display` for
@@ -100,6 +102,28 @@ seconds); at least one question is required, each with 2-4 options. No
 correct answers; this is polling, not trivia.
 
 ## Deployment
+
+### Pre-built image (quickest way to run this)
+
+A multi-arch image (`linux/amd64` + `linux/arm64` — including Apple
+Silicon, no emulation needed) is published to GitHub Container Registry on
+every tagged release:
+
+```
+docker run -p 8080:8080 ghcr.io/alphasecio/pollinator:latest
+```
+
+That's the whole setup — no `ADMIN_TOKEN` required, since one is
+generated and printed to the container's logs on startup if you don't set
+one yourself. Check the logs for the admin URL, or set `ADMIN_TOKEN`
+explicitly up front if you want a known, memorable one — see
+Configuration above for that and every other variable.
+
+Pull a specific version (`:1.0.0`) to pin to it, or `:latest` for the
+newest tagged release. You only need to build the Dockerfile yourself if
+you're modifying the source.
+
+### Building it yourself
 
 Single container, no volumes, no external services besides two CDN-loaded
 JS libraries (htmx and its SSE extension — pinned versions with SRI hashes,
