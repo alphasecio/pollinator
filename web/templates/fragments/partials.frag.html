@@ -42,17 +42,52 @@
 </div>
 {{end}}
 
+{{/*
+  Per-option color identity — red/blue/yellow/green, the actual Kahoot
+  palette, rendered as full solid fills (not just a border accent) to
+  match Kahoot's own tile treatment, which people already recognize.
+  Yellow does land close to pollen (amber, "action" everywhere else)
+  visually, but pollen never appears as a button on the screens these
+  colors show up on — the participant answer screen and both results
+  views — only the countdown number does, which reads as clearly
+  distinct in context (a monospace digit, not a filled option card).
+
+  The same index always maps to the same color in both places these are
+  used: the answer screen and the results screen iterate the same
+  Options array in the same order, so "the option you tapped" and "its
+  bar in the results" stay visually tied together with no extra state to
+  track — position alone is enough.
+
+  Each partial emits complete, literal Tailwind class strings per
+  branch, rather than building a class name dynamically. Tailwind
+  discovers classes by scanning source files for literal text at build
+  time — a dynamically-assembled class name is invisible to that scan,
+  so the CSS for it would simply never get generated.
+*/}}
+{{/*
+  option_fill_classes pairs each color with a text color chosen for
+  contrast, not just picked to match: red/blue are saturated enough for
+  white text to read clearly, but yellow/green are bright enough that
+  white text would have poor contrast there — dark text instead, same
+  choice Kahoot itself makes on its own yellow/green tiles.
+*/}}
+{{define "option_fill_classes"}}{{if eq . 0}}bg-red-500 text-white{{else if eq . 1}}bg-blue-500 text-white{{else if eq . 2}}bg-yellow-500 text-zinc-950{{else}}bg-green-500 text-zinc-950{{end}}{{end}}
+
+{{define "option_button_classes"}}{{template "option_fill_classes" .}} hover:opacity-90{{end}}
+
+{{define "option_bg_class"}}{{if eq . 0}}bg-red-500{{else if eq . 1}}bg-blue-500{{else if eq . 2}}bg-yellow-500{{else}}bg-green-500{{end}}{{end}}
+
 {{define "results_bars"}}
-<div class="space-y-3">
-    {{range .}}
+<div class="space-y-4">
+    {{range $i, $row := .}}
     <div>
-        <div class="flex justify-between text-sm mb-1">
-            <span>{{.Option}}</span>
-            <span class="text-zinc-400">{{.Count}} · {{.Percent}}%</span>
+        <div class="flex justify-between items-start gap-3 text-sm mb-1">
+            <span class="flex-1">{{$row.Option}}</span>
+            <span class="text-zinc-400 shrink-0 whitespace-nowrap">{{$row.Count}} · {{$row.Percent}}%</span>
         </div>
         <div class="h-3 rounded-full bg-zinc-900 overflow-hidden">
-            <div class="h-full bg-nectar rounded-full transition-all duration-700 ease-out"
-                 style="width: {{.Percent}}%"></div>
+            <div class="h-full rounded-full transition-all duration-700 ease-out {{template "option_bg_class" $i}}"
+                 style="width: {{$row.Percent}}%"></div>
         </div>
     </div>
     {{end}}
@@ -60,16 +95,16 @@
 {{end}}
 
 {{define "results_bars_large"}}
-<div class="space-y-6">
-    {{range .}}
+<div class="space-y-5">
+    {{range $i, $row := .}}
     <div>
-        <div class="flex justify-between text-xl mb-2">
-            <span>{{.Option}}</span>
-            <span class="text-zinc-400">{{.Count}} · {{.Percent}}%</span>
+        <div class="flex justify-between items-start gap-4 text-2xl mb-2">
+            <span class="flex-1">{{$row.Option}}</span>
+            <span class="text-zinc-400 shrink-0 whitespace-nowrap">{{$row.Count}} · {{$row.Percent}}%</span>
         </div>
-        <div class="h-5 rounded-full bg-zinc-900 overflow-hidden">
-            <div class="h-full bg-nectar rounded-full transition-all duration-700 ease-out"
-                 style="width: {{.Percent}}%"></div>
+        <div class="h-6 rounded-full bg-zinc-900 overflow-hidden">
+            <div class="h-full rounded-full transition-all duration-700 ease-out {{template "option_bg_class" $i}}"
+                 style="width: {{$row.Percent}}%"></div>
         </div>
     </div>
     {{end}}

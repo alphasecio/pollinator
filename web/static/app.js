@@ -209,6 +209,25 @@ function initQuestionsDrawer() {
 
 // --- poll setup/edit form ---
 //
+// Mirrors internal/poll.go's ValidatePoll limits exactly — keep these in
+// sync if either changes. codePointLength, not .length: JS's native
+// .length counts UTF-16 code units, and most emoji sit outside the Basic
+// Multilingual Plane (surrogate pairs, 2 code units) or are actually
+// multiple code points already (a base glyph plus an invisible variation
+// selector — e.g. "🛡️" is the shield glyph plus one extra selector
+// code point). Neither of those is what a human eyeballing the text would
+// call "how many characters," but code points are what Go's
+// utf8.RuneCountInString measures server-side — matching that, even where
+// it's surprising, is what actually keeps client and server agreeing.
+const MAX_TITLE_LENGTH = 60;
+const MAX_QUESTION_LENGTH = 200;
+const MAX_OPTION_LENGTH = 100;
+const MAX_QUESTIONS = 50;
+
+function codePointLength(str) {
+    return [...str].length;
+}
+
 // editingPoll blocks incoming SSE swaps entirely (see the htmx:beforeSwap
 // listener below) while true. This matters for a real reason, not just
 // caution: the edit form's question/option cards are built and held
@@ -267,7 +286,7 @@ function addPollOption(questionId, value) {
     row.innerHTML = `
         <input type="text" class="pq-option flex-1 rounded-lg bg-zinc-950 border border-zinc-800 px-3 py-2
                                     focus:outline-none focus:ring-2 focus:ring-pollen focus:border-transparent transition"
-               placeholder="Option" maxlength="60">
+               placeholder="Option" maxlength="100">
         <button type="button" class="text-zinc-500 hover:text-red-400 text-lg leading-none" onclick="removePollOption(${questionId}, this)">&times;</button>
     `;
     container.appendChild(row);
@@ -384,9 +403,16 @@ function gatherPollData() {
     const title = document.getElementById("poll-title").value.trim();
     const duration = parseInt(document.getElementById("poll-duration").value.trim(), 10);
 
+    if (codePointLength(title) > MAX_TITLE_LENGTH) {
+        return { error: `Event name is ${codePointLength(title)} characters (limit ${MAX_TITLE_LENGTH}) — shorten it.` };
+    }
+
     const cards = document.querySelectorAll("#poll-questions > [data-id]");
     if (cards.length === 0) {
         return { error: "Add at least one question." };
+    }
+    if (cards.length > MAX_QUESTIONS) {
+        return { error: `This poll has ${cards.length} questions (limit ${MAX_QUESTIONS}) — remove some.` };
     }
 
     const questions = [];
@@ -402,12 +428,21 @@ function gatherPollData() {
             error = `Question ${i + 1} is missing its text.`;
             return;
         }
+        if (codePointLength(qText) > MAX_QUESTION_LENGTH) {
+            error = `Question ${i + 1} is ${codePointLength(qText)} characters (limit ${MAX_QUESTION_LENGTH}) — shorten it.`;
+            return;
+        }
         if (rawOptions.some((v) => v === "")) {
             error = `Question ${i + 1} has an empty option — fill it in or remove it.`;
             return;
         }
         if (rawOptions.length < 2) {
             error = `Question ${i + 1} needs at least two options.`;
+            return;
+        }
+        const tooLong = rawOptions.find((v) => codePointLength(v) > MAX_OPTION_LENGTH);
+        if (tooLong) {
+            error = `Question ${i + 1} has an option that's ${codePointLength(tooLong)} characters (limit ${MAX_OPTION_LENGTH}) — shorten it.`;
             return;
         }
 
@@ -453,6 +488,57 @@ function exportPollJSON() {
     URL.revokeObjectURL(url);
 }
 
+// Validates a parsed poll object against the same limits the server
+// enforces (see internal/poll.go's ValidatePoll), before the form is ever
+// touched. This is the actual fix for the reported "silent failure": the
+// old code just wrote whatever text was in the file straight into input
+// fields carrying maxlength attributes — an over-length value got quietly
+// shortened by the browser right there, with zero indication anything had
+// changed, long before Save ever got a chance to reject it with a real
+// error. Rejecting up front, with a specific reason, means nothing is ever
+// silently mangled.
+function validateImportedPoll(data) {
+    if (!data || !Array.isArray(data.questions) || data.questions.length === 0) {
+        return 'That file doesn\'t look like a poll — expected a "questions" array.';
+    }
+    if (data.questions.length > MAX_QUESTIONS) {
+        return `That poll has ${data.questions.length} questions (limit ${MAX_QUESTIONS}).`;
+    }
+
+    const title = data.title || "";
+    if (codePointLength(title) > MAX_TITLE_LENGTH) {
+        return `Event name is ${codePointLength(title)} characters (limit ${MAX_TITLE_LENGTH}).`;
+    }
+
+    for (let i = 0; i < data.questions.length; i++) {
+        const q = data.questions[i] || {};
+        const qText = (q.question || "").trim();
+        const options = Array.isArray(q.options) ? q.options : [];
+
+        if (!qText) {
+            return `Question ${i + 1} is missing its text.`;
+        }
+        if (codePointLength(qText) > MAX_QUESTION_LENGTH) {
+            return `Question ${i + 1} is ${codePointLength(qText)} characters (limit ${MAX_QUESTION_LENGTH}).`;
+        }
+        if (options.length < 2) {
+            return `Question ${i + 1} needs at least two options.`;
+        }
+        if (options.length > MAX_POLL_OPTIONS) {
+            return `Question ${i + 1} has more than ${MAX_POLL_OPTIONS} options.`;
+        }
+        for (const opt of options) {
+            if (!opt || !opt.trim()) {
+                return `Question ${i + 1} has an empty option.`;
+            }
+            if (codePointLength(opt) > MAX_OPTION_LENGTH) {
+                return `Question ${i + 1} has an option that's ${codePointLength(opt)} characters (limit ${MAX_OPTION_LENGTH}).`;
+            }
+        }
+    }
+    return null;
+}
+
 // importPollJSON reads a previously-exported (or hand-written) poll.json
 // and replaces whatever's currently in the form with it. Reuses
 // addPollQuestion/addPollOption exactly as loadPollSeed already does for
@@ -476,8 +562,9 @@ function importPollJSON(inputEl) {
             return;
         }
 
-        if (!data || !Array.isArray(data.questions) || data.questions.length === 0) {
-            errorEl.innerHTML = '<p class="text-sm text-red-400 mt-2">That file doesn\'t look like a poll — expected a "questions" array.</p>';
+        const validationError = validateImportedPoll(data);
+        if (validationError) {
+            errorEl.innerHTML = `<p class="text-sm text-red-400 mt-2">${validationError}</p>`;
             inputEl.value = "";
             return;
         }
@@ -547,5 +634,25 @@ document.body.addEventListener("htmx:afterSwap", init);
 document.body.addEventListener("htmx:beforeSwap", (evt) => {
     if (editingPoll) {
         evt.detail.shouldSwap = false;
+        return;
+    }
+
+    // Suppress no-op swaps generally, not just for the join form
+    // specifically — but this is exactly the bug that motivated adding
+    // it: broadcastAll() fires on every successful join, pushing a fresh
+    // render to every subscriber including everyone still filling in the
+    // join form. That form's content depends only on the event title, not
+    // on who else has joined — so with many people joining in a tight
+    // window, everyone else's #app was getting swapped with the exact
+    // same form they already had, over and over, wiping out whatever
+    // they'd typed mid-keystroke. If the incoming content is identical to
+    // what's already there, there's nothing to gain from applying it and
+    // a real cost (lost typing, a visible flicker) to doing so anyway.
+    if (evt.detail.target && evt.detail.serverResponse != null) {
+        const incoming = evt.detail.serverResponse.trim();
+        const current = evt.detail.target.innerHTML.trim();
+        if (incoming === current) {
+            evt.detail.shouldSwap = false;
+        }
     }
 });

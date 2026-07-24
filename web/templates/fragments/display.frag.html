@@ -32,23 +32,23 @@
 {{end}}
 
 {{define "display_question"}}
-<div class="py-10 text-center">
-    <p class="text-zinc-400 text-sm mb-4">Question {{add1 .State.QuestionIndex}} of {{len .Poll.Questions}}</p>
-    <div class="font-mono text-6xl mb-6 text-pollen">
+<div class="py-6 text-center">
+    <p class="text-zinc-400 text-lg mb-4">Question {{add1 .State.QuestionIndex}} of {{len .Poll.Questions}}</p>
+    <div class="font-mono text-6xl mb-5 text-pollen">
         <span data-countdown-end="{{.EndUnixMilli}}" data-seconds-left="{{.SecondsLeft}}">{{.SecondsLeft}}</span>
     </div>
-    <h2 class="text-4xl font-bold mb-10">{{.Question.Question}}</h2>
-    <div class="grid gap-3 max-w-xl mx-auto text-left">
-        {{range .Question.Options}}
-        <div class="rounded-xl bg-zinc-900 border border-zinc-800 px-5 py-4 text-xl">{{.}}</div>
+    <h2 class="text-4xl font-bold mb-6 text-left max-w-4xl mx-auto">{{.Question.Question}}</h2>
+    <div class="grid gap-3 max-w-4xl mx-auto text-left">
+        {{range $i, $opt := .Question.Options}}
+        <div class="rounded-xl px-6 py-4 text-2xl font-medium {{template "option_fill_classes" $i}}">{{$opt}}</div>
         {{end}}
     </div>
 </div>
 {{end}}
 
 {{define "display_results"}}
-<div class="py-10 max-w-2xl mx-auto text-center">
-    <h2 class="text-4xl font-bold mb-12">{{.Question.Question}}</h2>
+<div class="py-6 max-w-4xl mx-auto text-center">
+    <h2 class="text-4xl font-bold mb-8 text-left">{{.Question.Question}}</h2>
     <div class="text-left">
         {{template "results_bars_large" .Results}}
     </div>

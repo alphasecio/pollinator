@@ -263,7 +263,18 @@
 
 <script>
   const MAX_OPTIONS = 4;
+  const MAX_TITLE_LENGTH = 60;
+  const MAX_QUESTION_LENGTH = 200;
+  const MAX_OPTION_LENGTH = 100;
+  const MAX_QUESTIONS = 50;
   const DRAFT_KEY = 'pollinator-draft';
+
+  // Code-point aware, not .length (UTF-16 code units) — matches Go's
+  // utf8.RuneCountInString, which is what the server actually enforces.
+  // Kept identical to the same helper in the main app's app.js.
+  function codePointLength(str) {
+    return [...str].length;
+  }
 
   // Saves whatever's currently in the form, valid or not — unlike
   // convert(), this never blocks on validation, since the whole point is
@@ -331,7 +342,7 @@
       </div>
       <div class="q-block">
         <label>Question</label>
-        <input type="text" class="q-text" placeholder="e.g. Favourite language?">
+        <input type="text" class="q-text" placeholder="e.g. Favourite language?" maxlength="200">
       </div>
       <div class="options-label">
         <label style="margin:0">Options (up to ${MAX_OPTIONS})</label>
@@ -358,7 +369,7 @@
     const row = document.createElement('div');
     row.className = 'option-row';
     row.innerHTML = `
-      <input type="text" class="o-text" placeholder="Option">
+      <input type="text" class="o-text" placeholder="Option" maxlength="100">
       <button class="ghost" title="Remove option" onclick="removeOption(${questionId}, this)">&times;</button>
     `;
     container.appendChild(row);
@@ -404,8 +415,18 @@
     const status = document.getElementById('status');
     status.textContent = '';
 
+    const title = document.getElementById('pollTitle').value.trim();
+    if (codePointLength(title) > MAX_TITLE_LENGTH) {
+      output.textContent = `Event name is ${codePointLength(title)} characters (limit ${MAX_TITLE_LENGTH}) — shorten it.`;
+      return;
+    }
+
     if (cards.length === 0) {
       output.textContent = 'Add at least one question first.';
+      return;
+    }
+    if (cards.length > MAX_QUESTIONS) {
+      output.textContent = `This poll has ${cards.length} questions (limit ${MAX_QUESTIONS}) — remove some.`;
       return;
     }
 
@@ -422,12 +443,21 @@
         error = `Question ${i + 1} is missing its text.`;
         return;
       }
+      if (codePointLength(qText) > MAX_QUESTION_LENGTH) {
+        error = `Question ${i + 1} is ${codePointLength(qText)} characters (limit ${MAX_QUESTION_LENGTH}) — shorten it.`;
+        return;
+      }
       if (rawOptions.some((v) => v === '')) {
         error = `Question ${i + 1} has an empty option — fill it in or remove it.`;
         return;
       }
       if (rawOptions.length < 2) {
         error = `Question ${i + 1} needs at least two options.`;
+        return;
+      }
+      const tooLong = rawOptions.find((v) => codePointLength(v) > MAX_OPTION_LENGTH);
+      if (tooLong) {
+        error = `Question ${i + 1} has an option that's ${codePointLength(tooLong)} characters (limit ${MAX_OPTION_LENGTH}) — shorten it.`;
         return;
       }
 
@@ -440,7 +470,6 @@
       return;
     }
 
-    const title = document.getElementById('pollTitle').value.trim();
     const duration = parseInt(document.getElementById('pollDuration').value.trim(), 10);
 
     output.textContent = JSON.stringify({

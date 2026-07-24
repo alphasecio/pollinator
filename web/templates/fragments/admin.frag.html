@@ -21,9 +21,9 @@
             {{range $i, $q := .Poll.Questions}}
             <li class="border-b border-zinc-800 pb-5 last:border-0 last:pb-0">
                 <p class="text-zinc-200 font-medium mb-2">{{add1 $i}}. {{$q.Question}}</p>
-                <ul class="space-y-1">
+                <ul class="space-y-1 list-disc list-inside marker:text-zinc-600">
                     {{range $q.Options}}
-                    <li class="text-zinc-500 text-sm pl-4">{{.}}</li>
+                    <li class="text-zinc-500 text-sm">{{.}}</li>
                     {{end}}
                 </ul>
             </li>
@@ -115,14 +115,14 @@
 
 {{define "admin_question"}}
 <div class="text-center py-6">
-    <div class="flex items-center justify-between text-zinc-400 text-sm mb-6 max-w-md mx-auto">
+    <div class="flex items-center justify-between text-zinc-400 text-sm mb-6">
         <span>Question {{add1 .State.QuestionIndex}} of {{len .Poll.Questions}}</span>
         <span><span data-countdown-end="{{.EndUnixMilli}}" data-seconds-left="{{.SecondsLeft}}" class="font-mono text-pollen">{{.SecondsLeft}}</span>s</span>
     </div>
-    <h2 class="text-2xl font-bold mb-8">{{.Question.Question}}</h2>
-    <div class="grid gap-3 max-w-md mx-auto text-left">
-        {{range .Question.Options}}
-        <div class="rounded-xl bg-zinc-900 border border-zinc-800 px-5 py-4 text-lg">{{.}}</div>
+    <h2 class="text-2xl font-bold mb-8 text-left">{{.Question.Question}}</h2>
+    <div class="grid gap-3 text-left">
+        {{range $i, $opt := .Question.Options}}
+        <div class="rounded-xl px-5 py-4 text-lg font-medium {{template "option_fill_classes" $i}}">{{$opt}}</div>
         {{end}}
     </div>
 </div>
@@ -131,8 +131,8 @@
 
 {{define "admin_results"}}
 <div class="text-center py-6">
-    <h2 class="text-2xl font-bold mb-8">{{.Question.Question}}</h2>
-    <div class="max-w-md mx-auto text-left">
+    <h2 class="text-2xl font-bold mb-8 text-left">{{.Question.Question}}</h2>
+    <div class="text-left">
         {{template "results_bars" .Results}}
     </div>
     <div>
@@ -152,19 +152,28 @@
 {{end}}
 
 {{define "admin_finished"}}
-<div class="text-center py-16">
+<div class="text-center py-16" id="admin-ready">
     <h1 class="text-4xl sm:text-5xl font-bold tracking-tight">Poll complete</h1>
     <div class="mt-10 flex flex-col items-center gap-3">
         <a href="{{.AdminBase}}/download"
            class="w-72 rounded-xl bg-pollen text-zinc-950 font-semibold px-6 py-3.5 hover:bg-pollen/90 transition">
             Download results
         </a>
-        <button hx-post="{{.AdminBase}}/reset"
-                hx-confirm="Resetting will permanently clear these results — make sure you've downloaded them first."
-                class="w-72 rounded-xl bg-zinc-800 border border-zinc-700 px-6 py-3.5 hover:bg-zinc-700 transition">
-            Reset
-        </button>
+        <div class="w-72 flex gap-3">
+            <button type="button" onclick="showEditPoll()"
+                    class="flex-1 rounded-xl bg-zinc-800 border border-zinc-700 px-4 py-3.5 hover:bg-zinc-700 transition">
+                Edit poll
+            </button>
+            <button hx-post="{{.AdminBase}}/reset"
+                    hx-confirm="Resetting will permanently clear these results — make sure you've downloaded them first."
+                    class="flex-1 rounded-xl bg-zinc-800 border border-zinc-700 px-4 py-3.5 hover:bg-zinc-700 transition">
+                Reset
+            </button>
+        </div>
     </div>
+</div>
+<div id="admin-edit" class="hidden text-left max-w-md mx-auto py-6">
+    {{template "poll_form" .}}
 </div>
 {{template "questions_preview" .}}
 {{end}}

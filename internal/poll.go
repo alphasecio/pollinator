@@ -18,7 +18,10 @@ const (
 
 	maxTitleLength    = 60
 	maxQuestionLength = 200
-	maxOptionLength   = 60
+	maxOptionLength   = 100 // was 60 — real content (long-form, discussion-style options)
+	// routinely ran 70-80 chars; 100 covers that with headroom without
+	// abandoning the original reasoning (very long text still degrades a
+	// phone button / results bar)
 )
 
 // Question and Poll are the one authoritative description of an event: its
