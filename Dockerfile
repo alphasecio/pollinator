@@ -1,4 +1,4 @@
-FROM node:22-alpine AS css
+FROM --platform=$BUILDPLATFORM node:22-alpine AS css
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ COPY web ./web
 
 RUN npm run build:css
 
-FROM golang:1.26-alpine AS build
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
 
 WORKDIR /app
 
@@ -25,6 +25,13 @@ COPY --from=css /app/web/static/app.css ./web/static/app.css
 # Dockerfile changing to invalidate it.
 RUN go mod tidy
 
+# css and build both stay pinned to --platform=$BUILDPLATFORM above — neither
+# needs to run under target-platform emulation at all. Compiled CSS isn't
+# architecture-specific in the first place, and Go cross-compiles natively:
+# producing an arm64 binary doesn't require the compiler itself to execute
+# under arm64 emulation, only GOARCH needs to say so. Only this final stage
+# is genuinely platform-specific, and it needs zero execution to become
+# so — just a file copy into the matching base image per target.
 ARG TARGETOS
 ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
