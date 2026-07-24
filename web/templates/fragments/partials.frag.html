@@ -86,14 +86,14 @@
 {{end}}
 
 {{define "results_bars_large"}}
-<div class="space-y-7">
+<div class="space-y-8">
     {{range $i, $row := .}}
     <div>
-        <div class="flex justify-between items-start gap-4 text-xl mb-2">
+        <div class="flex justify-between items-start gap-4 text-3xl mb-3">
             <span class="flex-1">{{$row.Option}}</span>
             <span class="text-zinc-400 shrink-0 whitespace-nowrap">{{$row.Count}} · {{$row.Percent}}%</span>
         </div>
-        <div class="h-5 rounded-full bg-zinc-900 overflow-hidden">
+        <div class="h-7 rounded-full bg-zinc-900 overflow-hidden">
             <div class="h-full rounded-full transition-all duration-700 ease-out {{template "option_bg_class" $i}}"
                  style="width: {{$row.Percent}}%"></div>
         </div>
