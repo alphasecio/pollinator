@@ -634,5 +634,25 @@ document.body.addEventListener("htmx:afterSwap", init);
 document.body.addEventListener("htmx:beforeSwap", (evt) => {
     if (editingPoll) {
         evt.detail.shouldSwap = false;
+        return;
+    }
+
+    // Suppress no-op swaps generally, not just for the join form
+    // specifically — but this is exactly the bug that motivated adding
+    // it: broadcastAll() fires on every successful join, pushing a fresh
+    // render to every subscriber including everyone still filling in the
+    // join form. That form's content depends only on the event title, not
+    // on who else has joined — so with many people joining in a tight
+    // window, everyone else's #app was getting swapped with the exact
+    // same form they already had, over and over, wiping out whatever
+    // they'd typed mid-keystroke. If the incoming content is identical to
+    // what's already there, there's nothing to gain from applying it and
+    // a real cost (lost typing, a visible flicker) to doing so anyway.
+    if (evt.detail.target && evt.detail.serverResponse != null) {
+        const incoming = evt.detail.serverResponse.trim();
+        const current = evt.detail.target.innerHTML.trim();
+        if (incoming === current) {
+            evt.detail.shouldSwap = false;
+        }
     }
 });
