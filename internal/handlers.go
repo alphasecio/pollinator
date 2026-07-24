@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/csv"
 	"fmt"
@@ -148,15 +149,21 @@ func (a *App) savePollAction(w http.ResponseWriter, r *http.Request) {
 }
 
 // downloadResultsAction is a plain GET, not an htmx action — it's a file
-// download, and htmx would try to swap the CSV body into the DOM as if it
-// were HTML. A regular <a href> download link is the correct tool here.
+// download, and htmx would try to swap the response body into the DOM as
+// if it were HTML. A regular <a href> download link is the correct tool
+// here.
+//
+// Bundles two files into one .zip rather than trying to trigger two
+// separate downloads from one click — browsers don't reliably support
+// that (several block or prompt on the second one), so a single zip is
+// the dependable choice: the existing raw poll-results.csv, and a
+// generated, self-contained HTML recap (poll-recap.html) that reuses the
+// same option colors participants saw live — see recap.go.
 func (a *App) downloadResultsAction(w http.ResponseWriter, r *http.Request) {
 	results := a.hub.Results()
 
-	w.Header().Set("Content-Type", "text/csv")
-	w.Header().Set("Content-Disposition", `attachment; filename="poll-results.csv"`)
-
-	cw := csv.NewWriter(w)
+	var csvBuf bytes.Buffer
+	cw := csv.NewWriter(&csvBuf)
 	_ = cw.Write([]string{"question", "option", "votes"})
 	for _, result := range results {
 		for i, opt := range result.Options {
@@ -164,4 +171,24 @@ func (a *App) downloadResultsAction(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	cw.Flush()
+
+	recapHTML, err := renderRecapHTML(a.hub.EventTitle(), results)
+	if err != nil {
+		a.logger.Error("render recap failed", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", `attachment; filename="poll-results.zip"`)
+
+	zw := zip.NewWriter(w)
+	defer zw.Close()
+
+	if f, err := zw.Create("poll-results.csv"); err == nil {
+		_, _ = f.Write(csvBuf.Bytes())
+	}
+	if f, err := zw.Create("poll-recap.html"); err == nil {
+		_, _ = f.Write([]byte(recapHTML))
+	}
 }
