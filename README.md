@@ -18,7 +18,8 @@ state, ephemeral by design: restarting the container starts a fresh poll.
   control needed
 - QR code and short-link join flow, toggleable on `/display` for
   latecomers mid-poll
-- CSV export of final results
+- Final results download as a zip — raw CSV plus a self-contained,
+  shareable HTML recap page
 
 ## Pages
 
@@ -54,7 +55,8 @@ any running container, lives in `poll-builder/` and deploys separately
 Start the poll, advance questions, toggle a QR overlay on `/display` for
 latecomers (disabled during an active question, so it can't accidentally
 hide one), preview all questions in a side panel at any point, and
-download final results as CSV once the poll ends.
+download final results once the poll ends — a zip containing the raw
+CSV and a self-contained HTML recap page, ready to open or share as-is.
 
 While editing a poll, "Import JSON" / "Export JSON" round-trip the form
 to/from a `poll.json` file — Export downloads whatever's currently in the
