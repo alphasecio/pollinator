@@ -228,6 +228,69 @@ function codePointLength(str) {
     return [...str].length;
 }
 
+// --- admin edit form draft persistence ---
+//
+// Protects against exactly the reported bug: an unexpected page reload —
+// a platform-level connection timeout followed by more than a normal
+// in-page SSE reconnect, or the browser discarding a backgrounded tab —
+// losing everything typed into the edit form. Mirrors the standalone
+// poll-builder tool's saveDraft/loadDraft pattern exactly, proven there
+// already rather than a new mechanism to independently get right. A
+// different origin than the standalone tool (this runs on the deployed
+// app's own domain), so there's no risk of the two ever colliding even
+// though localStorage would otherwise be shared by key name alone — the
+// distinct key here is just for clarity if anyone ever inspects storage,
+// not because a collision is actually possible.
+const ADMIN_DRAFT_KEY = "pollinator-admin-poll-draft";
+
+function saveAdminDraft() {
+    try {
+        const title = document.getElementById("poll-title").value;
+        const duration = document.getElementById("poll-duration").value;
+        const questions = Array.from(document.querySelectorAll("#poll-questions > [data-id]")).map((card) => {
+            const optionRows = Array.from(card.querySelectorAll(".pq-option-row"));
+            const q = {
+                question: card.querySelector(".pq-text").value,
+                options: optionRows.map((row) => row.querySelector(".pq-option").value),
+            };
+            const correctIdx = optionRows.findIndex((row) => row.querySelector(".pq-correct-radio").checked);
+            if (correctIdx !== -1) q.correctIndex = correctIdx;
+            return q;
+        });
+        localStorage.setItem(ADMIN_DRAFT_KEY, JSON.stringify({ title, duration, questions }));
+    } catch (e) {
+        // no-op — draft persistence just doesn't work here (private
+        // browsing, some embedded contexts), nothing else depends on it
+    }
+}
+
+// Returns true if a draft was actually found and restored, so the caller
+// knows whether it still needs to fall back to seeding from the server's
+// current poll instead.
+function loadAdminDraft() {
+    try {
+        const raw = localStorage.getItem(ADMIN_DRAFT_KEY);
+        if (!raw) return false;
+        const draft = JSON.parse(raw);
+        if (!draft.questions || draft.questions.length === 0) return false;
+
+        document.getElementById("poll-title").value = draft.title || "";
+        document.getElementById("poll-duration").value = draft.duration || 20;
+        draft.questions.forEach((q) => addPollQuestion(q.question, q.options, q.correctIndex));
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+function clearAdminDraft() {
+    try {
+        localStorage.removeItem(ADMIN_DRAFT_KEY);
+    } catch (e) {
+        // no-op
+    }
+}
+
 // editingPoll blocks incoming SSE swaps entirely (see the htmx:beforeSwap
 // listener below) while true. This matters for a real reason, not just
 // caution: the edit form's question/option cards are built and held
@@ -237,7 +300,10 @@ function codePointLength(str) {
 // no way to recover it. Blocking swaps while editing trades a few seconds
 // of stale "N joined" text for never losing in-progress edits, which is
 // obviously the right side of that trade for a form nobody fills out more
-// than once per poll anyway.
+// than once per poll anyway. localStorage draft persistence (above) is
+// the second, independent layer: it protects against a genuine hard
+// reload, which editingPoll alone can't — that's a fresh JS context with
+// no memory of anything.
 let editingPoll = false;
 const MAX_POLL_OPTIONS = 4;
 let pollUid = 0;
@@ -246,7 +312,7 @@ function findPollCard(id) {
     return document.querySelector(`#poll-questions > [data-id="${id}"]`);
 }
 
-function addPollQuestion(questionText, options) {
+function addPollQuestion(questionText, options, correctIndex) {
     pollUid++;
     const id = pollUid;
 
@@ -265,25 +331,28 @@ function addPollQuestion(questionText, options) {
             <span class="text-xs text-zinc-500">Options (up to ${MAX_POLL_OPTIONS})</span>
             <button type="button" class="text-xs text-zinc-500 hover:text-pollen pq-add-option" onclick="addPollOption(${id})">+ Add option</button>
         </div>
+        <p class="text-xs text-zinc-600 mb-2">Optionally mark one option as the correct answer (tap the circle) — shown on the results view once the question closes.</p>
         <div class="pq-options space-y-2"></div>
     `;
     document.getElementById("poll-questions").appendChild(card);
     card.querySelector(".pq-text").value = questionText || "";
 
     const opts = (options && options.length) ? options : ["", ""];
-    opts.forEach((o) => addPollOption(id, o));
+    opts.forEach((o, i) => addPollOption(id, o, correctIndex === i));
 
     renumberPollQuestions();
+    saveAdminDraft();
 }
 
-function addPollOption(questionId, value) {
+function addPollOption(questionId, value, isCorrect) {
     const card = findPollCard(questionId);
     const container = card.querySelector(".pq-options");
     if (container.children.length >= MAX_POLL_OPTIONS) return;
 
     const row = document.createElement("div");
-    row.className = "flex gap-2";
+    row.className = "pq-option-row flex gap-2 items-center";
     row.innerHTML = `
+        <input type="radio" name="pq-correct-${questionId}" class="pq-correct-radio accent-pollen shrink-0" title="Mark as correct answer">
         <input type="text" class="pq-option flex-1 rounded-lg bg-zinc-950 border border-zinc-800 px-3 py-2
                                     focus:outline-none focus:ring-2 focus:ring-pollen focus:border-transparent transition"
                placeholder="Option" maxlength="100">
@@ -291,14 +360,19 @@ function addPollOption(questionId, value) {
     `;
     container.appendChild(row);
     row.querySelector(".pq-option").value = value || "";
+    if (isCorrect) {
+        row.querySelector(".pq-correct-radio").checked = true;
+    }
 
     updatePollAddOptionState(card);
+    saveAdminDraft();
 }
 
 function removePollOption(questionId, btn) {
     const card = findPollCard(questionId);
     btn.parentElement.remove();
     updatePollAddOptionState(card);
+    saveAdminDraft();
 }
 
 function updatePollAddOptionState(card) {
@@ -310,6 +384,7 @@ function removePollQuestion(id) {
     const card = findPollCard(id);
     if (card) card.remove();
     renumberPollQuestions();
+    saveAdminDraft();
 }
 
 // Visible "Question N" labels always reflect current position in the
@@ -347,7 +422,7 @@ function loadPollSeed() {
     if (seed) {
         titleEl.value = seed.title || "";
         durationEl.value = seed.duration || 20;
-        (seed.questions || []).forEach((q) => addPollQuestion(q.question, q.options));
+        (seed.questions || []).forEach((q) => addPollQuestion(q.question, q.options, q.correctIndex));
     } else {
         durationEl.value = 20;
         addPollQuestion();
@@ -357,12 +432,25 @@ function loadPollSeed() {
 // The dynamic question cards are built once from seed data, not rebuilt on
 // every render — data-initialized guards against doing it twice if init()
 // runs again for an unrelated reason (e.g. tickCountdowns needing a
-// re-arm) while the form is already populated.
+// re-arm) while the form is already populated. The same guard also wires
+// up draft-saving exactly once per real form instance, alongside the
+// initial populate.
 function initPollFormIfNeeded() {
     const container = document.getElementById("poll-questions");
     if (!container || container.dataset.initialized === "true") return;
     container.dataset.initialized = "true";
-    loadPollSeed();
+
+    // A saved draft always wins over the server's seed — it's either the
+    // same content (harmless to restore either way) or genuinely more
+    // recent unsaved work, exactly the case an unexpected reload would
+    // otherwise have destroyed.
+    if (!loadAdminDraft()) {
+        loadPollSeed();
+    }
+
+    container.addEventListener("input", saveAdminDraft);
+    document.getElementById("poll-title").addEventListener("input", saveAdminDraft);
+    document.getElementById("poll-duration").addEventListener("input", saveAdminDraft);
 }
 
 function initPollEditor() {
@@ -392,6 +480,7 @@ function showEditPoll() {
 }
 
 function cancelEditPoll() {
+    clearAdminDraft();
     window.location.reload();
 }
 
@@ -422,7 +511,8 @@ function gatherPollData() {
         if (error) return;
 
         const qText = card.querySelector(".pq-text").value.trim();
-        const rawOptions = Array.from(card.querySelectorAll(".pq-option")).map((el) => el.value.trim());
+        const optionRows = Array.from(card.querySelectorAll(".pq-option-row"));
+        const rawOptions = optionRows.map((row) => row.querySelector(".pq-option").value.trim());
 
         if (!qText) {
             error = `Question ${i + 1} is missing its text.`;
@@ -446,7 +536,13 @@ function gatherPollData() {
             return;
         }
 
-        questions.push({ question: qText, options: rawOptions });
+        const question = { question: qText, options: rawOptions };
+        const correctIdx = optionRows.findIndex((row) => row.querySelector(".pq-correct-radio").checked);
+        if (correctIdx !== -1) {
+            question.correctIndex = correctIdx;
+        }
+
+        questions.push(question);
     });
 
     if (error) return { error };
@@ -535,6 +631,9 @@ function validateImportedPoll(data) {
                 return `Question ${i + 1} has an option that's ${codePointLength(opt)} characters (limit ${MAX_OPTION_LENGTH}).`;
             }
         }
+        if (typeof q.correctIndex === "number" && (q.correctIndex < 0 || q.correctIndex >= options.length)) {
+            return `Question ${i + 1}'s correct answer index is out of range.`;
+        }
     }
     return null;
 }
@@ -577,7 +676,7 @@ function importPollJSON(inputEl) {
         document.getElementById("poll-questions").innerHTML = "";
         document.getElementById("poll-title").value = data.title || "";
         document.getElementById("poll-duration").value = data.duration || 20;
-        data.questions.forEach((q) => addPollQuestion(q.question, q.options));
+        data.questions.forEach((q) => addPollQuestion(q.question, q.options, q.correctIndex));
 
         // Reset so importing the same file again still fires onchange.
         inputEl.value = "";
@@ -604,6 +703,7 @@ async function savePoll(adminBase) {
 
         if (res.ok) {
             editingPoll = false;
+            clearAdminDraft();
             window.location.reload();
         } else {
             errorEl.innerHTML = await res.text();
