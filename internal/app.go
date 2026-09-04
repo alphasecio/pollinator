@@ -60,7 +60,7 @@ func NewApp(cfg *Config, logger *slog.Logger) (*App, error) {
 	}
 
 	adminBase := "/admin/" + cfg.AdminToken
-	hub := NewHub(cfg.Poll, adminBase, cfg.DisplayURL, tmpl, logger)
+	hub := NewHub(cfg.Poll, adminBase, cfg.DisplayURL, cfg.PollVolumePath, tmpl, logger)
 	go hub.Run(context.Background())
 
 	a := &App{
@@ -162,4 +162,5 @@ func (a *App) routes(staticFS fs.FS, adminBase string) {
 	a.mux.HandleFunc("POST "+adminBase+"/next", a.adminAction(a.hub.Next))
 	a.mux.HandleFunc("POST "+adminBase+"/reset", a.adminAction(a.hub.Reset))
 	a.mux.HandleFunc("POST "+adminBase+"/qr", a.adminAction(a.hub.ToggleQR))
+	a.mux.HandleFunc("POST "+adminBase+"/end", a.adminAction(a.hub.EndPoll))
 }
