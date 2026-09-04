@@ -122,13 +122,25 @@
     pointer-events: none;
   }
 
+  .options-hint {
+    font-size: 0.72rem;
+    color: #52525b;
+    margin: 0 0 0.5rem;
+  }
+
   .option-row {
     display: flex;
+    align-items: center;
     gap: 0.5rem;
     margin-bottom: 0.5rem;
   }
 
-  .option-row input { flex: 1; }
+  .option-row input[type="text"] { flex: 1; }
+
+  .option-row input[type="radio"] {
+    accent-color: var(--pollen);
+    flex-shrink: 0;
+  }
 
   button {
     font-family: inherit;
@@ -286,10 +298,16 @@
     try {
       const title = document.getElementById('pollTitle').value;
       const duration = document.getElementById('pollDuration').value;
-      const questions = Array.from(document.querySelectorAll('.question-card')).map((card) => ({
-        question: card.querySelector('.q-text').value,
-        options: Array.from(card.querySelectorAll('.o-text')).map((o) => o.value),
-      }));
+      const questions = Array.from(document.querySelectorAll('.question-card')).map((card) => {
+        const optionRows = Array.from(card.querySelectorAll('.option-row'));
+        const q = {
+          question: card.querySelector('.q-text').value,
+          options: optionRows.map((row) => row.querySelector('.o-text').value),
+        };
+        const correctIdx = optionRows.findIndex((row) => row.querySelector('.o-correct').checked);
+        if (correctIdx !== -1) q.correctIndex = correctIdx;
+        return q;
+      });
       localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, duration, questions }));
     } catch (e) {
       // no-op — draft persistence just doesn't work here, nothing else depends on it
@@ -307,7 +325,7 @@
 
       document.getElementById('pollTitle').value = draft.title || '';
       document.getElementById('pollDuration').value = draft.duration || 20;
-      draft.questions.forEach((q) => addQuestion(q.question, q.options));
+      draft.questions.forEach((q) => addQuestion(q.question, q.options, q.correctIndex));
       return true;
     } catch (e) {
       return false;
@@ -328,7 +346,7 @@
   }
   let uid = 0; // permanent, unique per card — only for wiring event handlers, never shown
 
-  function addQuestion(questionText, options) {
+  function addQuestion(questionText, options, correctIndex) {
     uid++;
     const id = uid;
 
@@ -342,25 +360,26 @@
       </div>
       <div class="q-block">
         <label>Question</label>
-        <input type="text" class="q-text" placeholder="e.g. Favourite language?" maxlength="200">
+        <input type="text" class="q-text" placeholder="e.g. Favourite language?">
       </div>
       <div class="options-label">
         <label style="margin:0">Options (up to ${MAX_OPTIONS})</label>
         <button class="small add-option" onclick="addOption(${id})">+ Add option</button>
       </div>
+      <p class="options-hint">Optionally mark one option as the correct answer (tap the circle) — for quiz-style polls only.</p>
       <div class="options"></div>
     `;
     document.getElementById('questions').appendChild(card);
     card.querySelector('.q-text').value = questionText || '';
 
     const opts = (options && options.length) ? options : ['', ''];
-    opts.forEach((o) => addOption(id, o));
+    opts.forEach((o, i) => addOption(id, o, correctIndex === i));
 
     renumberQuestions();
     saveDraft();
   }
 
-  function addOption(questionId, value) {
+  function addOption(questionId, value, isCorrect) {
     const card = document.querySelector(`.question-card[data-id="${questionId}"]`);
     const container = card.querySelector('.options');
 
@@ -369,11 +388,15 @@
     const row = document.createElement('div');
     row.className = 'option-row';
     row.innerHTML = `
-      <input type="text" class="o-text" placeholder="Option" maxlength="100">
+      <input type="radio" class="o-correct" name="correct-${questionId}" title="Mark as correct answer">
+      <input type="text" class="o-text" placeholder="Option">
       <button class="ghost" title="Remove option" onclick="removeOption(${questionId}, this)">&times;</button>
     `;
     container.appendChild(row);
     row.querySelector('.o-text').value = value || '';
+    if (isCorrect) {
+      row.querySelector('.o-correct').checked = true;
+    }
 
     updateAddOptionState(card);
     saveDraft();
@@ -437,7 +460,8 @@
       if (error) return;
 
       const qText = card.querySelector('.q-text').value.trim();
-      const rawOptions = Array.from(card.querySelectorAll('.o-text')).map((el) => el.value.trim());
+      const optionRows = Array.from(card.querySelectorAll('.option-row'));
+      const rawOptions = optionRows.map((row) => row.querySelector('.o-text').value.trim());
 
       if (!qText) {
         error = `Question ${i + 1} is missing its text.`;
@@ -461,7 +485,13 @@
         return;
       }
 
-      questions.push({ question: qText, options: rawOptions });
+      const question = { question: qText, options: rawOptions };
+      const correctIdx = optionRows.findIndex((row) => row.querySelector('.o-correct').checked);
+      if (correctIdx !== -1) {
+        question.correctIndex = correctIdx;
+      }
+
+      questions.push(question);
     });
 
     if (error) {
