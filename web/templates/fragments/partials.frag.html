@@ -77,12 +77,21 @@
 
 {{define "option_bg_class"}}{{if eq . 0}}bg-red-500{{else if eq . 1}}bg-blue-500{{else if eq . 2}}bg-yellow-500{{else}}bg-green-500{{end}}{{end}}
 
+{{/*
+  Quiz mode, Tier 1: Correct on a resultRow (see hub.go's resultsView)
+  marks the one option a question's CorrectIndex points to, if any —
+  nil for a plain poll question, so this never fires unless a question
+  specifically opted in. Shown only here, on the aggregate results view,
+  after a question has already closed — never during answering, and
+  never as per-participant right/wrong feedback (no per-user score or
+  breakdown exists anywhere in this app).
+*/}}
 {{define "results_bars"}}
 <div class="space-y-4">
     {{range $i, $row := .}}
     <div>
         <div class="flex justify-between items-start gap-3 text-sm mb-1">
-            <span class="flex-1">{{$row.Option}}</span>
+            <span class="flex-1{{if $row.Correct}} font-semibold{{end}}">{{if $row.Correct}}✓ {{end}}{{$row.Option}}</span>
             <span class="text-zinc-400 shrink-0 whitespace-nowrap">{{$row.Count}} · {{$row.Percent}}%</span>
         </div>
         <div class="h-3 rounded-full bg-zinc-900 overflow-hidden">
@@ -99,7 +108,7 @@
     {{range $i, $row := .}}
     <div>
         <div class="flex justify-between items-start gap-4 text-2xl mb-2">
-            <span class="flex-1">{{$row.Option}}</span>
+            <span class="flex-1{{if $row.Correct}} font-semibold{{end}}">{{if $row.Correct}}✓ {{end}}{{$row.Option}}</span>
             <span class="text-zinc-400 shrink-0 whitespace-nowrap">{{$row.Count}} · {{$row.Percent}}%</span>
         </div>
         <div class="h-6 rounded-full bg-zinc-900 overflow-hidden">
