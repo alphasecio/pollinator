@@ -25,16 +25,26 @@ const (
 )
 
 // Question and Poll are the one authoritative description of an event: its
-// name, its pacing, and its questions. There are no correct answers here —
-// this is polling, not trivia.
+// name, its pacing, and its questions.
 //
 // Poll is mutable now, unlike the rest of this app's state — see hub.go's
-// SetPoll — but only ever while the poll is in PhaseWaiting. Once a poll is
-// running, it's exactly as frozen as it always was; nothing about the
-// admin-editable setup changes that guarantee.
+// SetPoll — but only ever while the poll is in PhaseWaiting or
+// PhaseFinished. Once a poll is running, it's exactly as frozen as it
+// always was; nothing about the admin-editable setup changes that
+// guarantee.
 type Question struct {
 	Question string   `json:"question"`
 	Options  []string `json:"options"`
+	// CorrectIndex is nil for a plain poll question (still the default —
+	// "no correct answers, this is polling, not trivia" remains true
+	// unless a question opts in). A pointer, not a bare int: Go's zero
+	// value for int is 0, which is also a genuinely valid index (the
+	// first option) — a bare int couldn't distinguish "option 0 is
+	// correct" from "nothing marked," which would be a real, silent
+	// correctness bug, not just an awkward API. Shown only on the
+	// results view once a question closes — never during answering,
+	// and never as per-participant right/wrong feedback.
+	CorrectIndex *int `json:"correctIndex,omitempty"`
 }
 
 type Poll struct {
@@ -108,6 +118,9 @@ func ValidatePoll(p *Poll) error {
 			if utf8.RuneCountInString(opt) > maxOptionLength {
 				return fmt.Errorf("question %d has an option longer than %d characters", i+1, maxOptionLength)
 			}
+		}
+		if q.CorrectIndex != nil && (*q.CorrectIndex < 0 || *q.CorrectIndex >= len(q.Options)) {
+			return fmt.Errorf("question %d's correct answer index is out of range", i+1)
 		}
 	}
 
