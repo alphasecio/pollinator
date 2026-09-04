@@ -85,9 +85,8 @@ type setBaseURLRequest struct {
 // Poll being mutable is new: it used to be loaded once at boot and never
 // touched again, which is why every read site could safely assume it never
 // changed underneath it. That's still true in spirit — SetPoll only ever
-// succeeds while Phase is Waiting, enforced here, not just by hiding a
-// button — but the assumption is now "frozen while running," not "frozen
-// forever."
+// succeeds while Phase is Waiting or Finished — but the assumption is now
+// "frozen while running," not "frozen forever."
 type Hub struct {
 	poll      *Poll // nil until first configured
 	adminBase string
@@ -103,6 +102,13 @@ type Hub struct {
 	joinURL       string
 	joinQRDataURI string
 
+	// pollVolumePath is "" (persistence disabled, original ephemeral
+	// behavior) unless POLL_VOLUME was set and validated at boot — see
+	// config.go/persist.go. When set, every successful SetPoll also
+	// writes the poll out here, synchronously, before the caller's
+	// request gets its reply.
+	pollVolumePath string
+
 	state PollState
 
 	subscribers map[Role]map[chan string]string // ch -> sessionID
@@ -113,6 +119,7 @@ type Hub struct {
 	nextCh       chan chan error
 	resetCh      chan chan error
 	toggleQRCh   chan chan error
+	endPollCh    chan chan error
 	setPollCh    chan setPollRequest
 	setBaseURLCh chan setBaseURLRequest
 	snapshotCh   chan snapshotRequest
@@ -136,13 +143,17 @@ type Hub struct {
 // joinURL/joinQRDataURI are fixed here immediately and the lazy per-request
 // inference in SetBaseURL never touches them again — see the setBaseURLCh
 // case in Run.
-func NewHub(poll *Poll, adminBase, displayURL string, templates *template.Template, logger *slog.Logger) *Hub {
+//
+// pollVolumePath is "" unless POLL_VOLUME was configured and validated at
+// boot (see config.go) — see the setPollCh case in Run for what it does.
+func NewHub(poll *Poll, adminBase, displayURL, pollVolumePath string, templates *template.Template, logger *slog.Logger) *Hub {
 	h := &Hub{
-		poll:      poll,
-		adminBase: adminBase,
-		logger:    logger,
-		templates: templates,
-		state:     newPollState(),
+		poll:           poll,
+		adminBase:      adminBase,
+		logger:         logger,
+		templates:      templates,
+		pollVolumePath: pollVolumePath,
+		state:          newPollState(),
 		subscribers: map[Role]map[chan string]string{
 			RoleParticipant: {},
 			RoleDisplay:     {},
@@ -154,6 +165,7 @@ func NewHub(poll *Poll, adminBase, displayURL string, templates *template.Templa
 		nextCh:       make(chan chan error),
 		resetCh:      make(chan chan error),
 		toggleQRCh:   make(chan chan error),
+		endPollCh:    make(chan chan error),
 		setPollCh:    make(chan setPollRequest),
 		setBaseURLCh: make(chan setBaseURLRequest),
 		snapshotCh:   make(chan snapshotRequest),
@@ -221,7 +233,10 @@ func (h *Hub) Run(ctx context.Context) {
 			// answers, phase. Poll itself (event name, duration,
 			// questions) is configuration the admin owns, not something
 			// that happened during a run, so it survives untouched and
-			// the same poll is ready to run again immediately.
+			// the same poll is ready to run again immediately. Nothing
+			// about persistence needs to happen here either — the poll
+			// content hasn't changed, so whatever's already on the
+			// volume (if any) is still correct.
 			h.state.reset()
 			reply <- nil
 			timerC = nil
@@ -234,11 +249,40 @@ func (h *Hub) Run(ctx context.Context) {
 			}
 			reply <- nil
 
+		case reply := <-h.endPollCh:
+			// Deliberately only from Results, matching exactly where the
+			// button lives — never mid-question. That sidesteps a real
+			// ambiguity: ending mid-question would force a choice between
+			// recording a question's partial, timer-still-running
+			// answers as if it had closed normally (making its response
+			// count look artificially low next to every other question)
+			// or discarding real votes that were already cast. Scoping
+			// to Results only means every recorded question always ran
+			// its full course — there's never a partial one to reason
+			// about.
+			if h.state.Phase == PhaseResults {
+				h.state.Phase = PhaseFinished
+				h.state.ShowQR = false
+				h.broadcastAll()
+			}
+			reply <- nil
+
 		case req := <-h.setPollCh:
 			if h.state.Phase != PhaseWaiting && h.state.Phase != PhaseFinished {
 				req.reply <- fmt.Errorf("can't edit the poll while it's running")
 			} else {
 				h.poll = req.poll
+				if h.pollVolumePath != "" {
+					// Synchronous, and before the reply — "saved" in the
+					// admin UI should genuinely mean durably saved, not
+					// just updated in memory with a write still pending.
+					// A failure here is logged but doesn't fail the
+					// save: losing the persistence safety net shouldn't
+					// mean losing the ability to edit at all.
+					if err := savePersistedPoll(h.pollVolumePath, h.poll); err != nil {
+						h.logger.Error("failed to persist poll", "error", err)
+					}
+				}
 				req.reply <- nil
 				h.broadcastAll()
 			}
@@ -316,6 +360,18 @@ func (h *Hub) Reset() error {
 func (h *Hub) ToggleQR() error {
 	reply := make(chan error, 1)
 	h.toggleQRCh <- reply
+	return <-reply
+}
+
+// EndPoll skips straight to Finished from the results screen between
+// questions — for testing a large poll without clicking through every
+// single question. Only takes effect when Phase is actually Results
+// (mirroring how ToggleQR guards against the wrong phase); a stray call
+// from anywhere else is a harmless no-op, not just something the UI
+// happens to prevent by not showing the button elsewhere.
+func (h *Hub) EndPoll() error {
+	reply := make(chan error, 1)
+	h.endPollCh <- reply
 	return <-reply
 }
 
@@ -588,6 +644,7 @@ type resultRow struct {
 	Option  string
 	Count   int
 	Percent int
+	Correct bool // quiz mode only — see Question.CorrectIndex in poll.go
 }
 
 // render always resolves to a "_waiting" template when h.poll is nil,
@@ -641,7 +698,8 @@ func (h *Hub) resultsView() []resultRow {
 	if h.state.Answers == nil || h.poll == nil {
 		return nil
 	}
-	options := h.poll.Questions[h.state.QuestionIndex].Options
+	q := h.poll.Questions[h.state.QuestionIndex]
+	options := q.Options
 
 	total := 0
 	for _, c := range h.state.Answers {
@@ -655,7 +713,12 @@ func (h *Hub) resultsView() []resultRow {
 		if total > 0 {
 			percent = count * 100 / total
 		}
-		rows[i] = resultRow{Option: opt, Count: count, Percent: percent}
+		rows[i] = resultRow{
+			Option:  opt,
+			Count:   count,
+			Percent: percent,
+			Correct: q.CorrectIndex != nil && *q.CorrectIndex == i,
+		}
 	}
 	return rows
 }
