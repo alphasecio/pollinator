@@ -122,12 +122,6 @@
     pointer-events: none;
   }
 
-  .options-hint {
-    font-size: 0.72rem;
-    color: #52525b;
-    margin: 0 0 0.5rem;
-  }
-
   .option-row {
     display: flex;
     align-items: center;
@@ -363,10 +357,9 @@
         <input type="text" class="q-text" placeholder="e.g. Favourite language?">
       </div>
       <div class="options-label">
-        <label style="margin:0">Options (up to ${MAX_OPTIONS})</label>
+        <label style="margin:0">Options (up to ${MAX_OPTIONS}, tap circle for correct one)</label>
         <button class="small add-option" onclick="addOption(${id})">+ Add option</button>
       </div>
-      <p class="options-hint">Optionally mark one option as the correct answer (tap the circle) — for quiz-style polls only.</p>
       <div class="options"></div>
     `;
     document.getElementById('questions').appendChild(card);
