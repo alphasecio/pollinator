@@ -328,10 +328,9 @@ function addPollQuestion(questionText, options, correctIndex) {
                                    focus:outline-none focus:ring-2 focus:ring-pollen focus:border-transparent transition"
                placeholder="Question text" maxlength="200">
         <div class="flex items-center justify-between mb-1">
-            <span class="text-xs text-zinc-500">Options (up to ${MAX_POLL_OPTIONS})</span>
+            <span class="text-xs text-zinc-500">Options (up to ${MAX_POLL_OPTIONS}, tap circle for correct one)</span>
             <button type="button" class="text-xs text-zinc-500 hover:text-pollen pq-add-option" onclick="addPollOption(${id})">+ Add option</button>
         </div>
-        <p class="text-xs text-zinc-600 mb-2">Optionally mark one option as the correct answer (tap the circle) — shown on the results view once the question closes.</p>
         <div class="pq-options space-y-2"></div>
     `;
     document.getElementById("poll-questions").appendChild(card);
