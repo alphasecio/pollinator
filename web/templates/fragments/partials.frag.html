@@ -91,9 +91,10 @@
     {{range $i, $row := .}}
     <div>
         <div class="flex justify-between items-start gap-3 text-sm mb-1">
-            <span class="flex-1{{if $row.Correct}} font-semibold{{end}}">{{if $row.Correct}}✓ {{end}}{{$row.Option}}</span>
+            <span class="flex-1">{{$row.Option}}</span>
             <span class="text-zinc-400 shrink-0 whitespace-nowrap">{{$row.Count}} · {{$row.Percent}}%</span>
         </div>
+        {{if $row.Correct}}<p class="text-nectar text-xs font-semibold uppercase tracking-wide mb-1">✓ Correct answer</p>{{end}}
         <div class="h-3 rounded-full bg-zinc-900 overflow-hidden">
             <div class="h-full rounded-full transition-all duration-700 ease-out {{template "option_bg_class" $i}}"
                  style="width: {{$row.Percent}}%"></div>
@@ -108,9 +109,10 @@
     {{range $i, $row := .}}
     <div>
         <div class="flex justify-between items-start gap-4 text-2xl mb-2">
-            <span class="flex-1{{if $row.Correct}} font-semibold{{end}}">{{if $row.Correct}}✓ {{end}}{{$row.Option}}</span>
+            <span class="flex-1">{{$row.Option}}</span>
             <span class="text-zinc-400 shrink-0 whitespace-nowrap">{{$row.Count}} · {{$row.Percent}}%</span>
         </div>
+        {{if $row.Correct}}<p class="text-nectar text-base font-semibold uppercase tracking-wide mb-2">✓ Correct answer</p>{{end}}
         <div class="h-6 rounded-full bg-zinc-900 overflow-hidden">
             <div class="h-full rounded-full transition-all duration-700 ease-out {{template "option_bg_class" $i}}"
                  style="width: {{$row.Percent}}%"></div>
