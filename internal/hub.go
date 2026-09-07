@@ -250,17 +250,20 @@ func (h *Hub) Run(ctx context.Context) {
 			reply <- nil
 
 		case reply := <-h.endPollCh:
-			// Deliberately only from Results, matching exactly where the
-			// button lives — never mid-question. That sidesteps a real
-			// ambiguity: ending mid-question would force a choice between
-			// recording a question's partial, timer-still-running
-			// answers as if it had closed normally (making its response
-			// count look artificially low next to every other question)
-			// or discarding real votes that were already cast. Scoping
-			// to Results only means every recorded question always ran
-			// its full course — there's never a partial one to reason
-			// about.
-			if h.state.Phase == PhaseResults {
+			// Allowed from Waiting (end before it's even started, or hide
+			// it) and from Results (between questions) — deliberately
+			// never mid-question. That sidesteps a real ambiguity: ending
+			// mid-question would force a choice between recording a
+			// question's partial, timer-still-running answers as if it
+			// had closed normally (making its response count look
+			// artificially low next to every other question) or
+			// discarding real votes that were already cast. Both allowed
+			// phases instead land on a clean boundary — either no
+			// questions have run yet, or the current one already fully
+			// resolved and got recorded — so there's never a partial one
+			// to reason about, and Results ends up empty rather than
+			// wrong when ended straight from Waiting.
+			if h.state.Phase == PhaseWaiting || h.state.Phase == PhaseResults {
 				h.state.Phase = PhaseFinished
 				h.state.ShowQR = false
 				h.broadcastAll()
@@ -363,12 +366,13 @@ func (h *Hub) ToggleQR() error {
 	return <-reply
 }
 
-// EndPoll skips straight to Finished from the results screen between
-// questions — for testing a large poll without clicking through every
-// single question. Only takes effect when Phase is actually Results
-// (mirroring how ToggleQR guards against the wrong phase); a stray call
-// from anywhere else is a harmless no-op, not just something the UI
-// happens to prevent by not showing the button elsewhere.
+// EndPoll skips straight to Finished — from Waiting (before the poll has
+// even started, or to hide it) or from Results between questions (for
+// testing a large poll without clicking through every single question).
+// Only takes effect from those two phases (mirroring how ToggleQR guards
+// against the wrong phase); a stray call from anywhere else is a harmless
+// no-op, not just something the UI happens to prevent by not showing the
+// button elsewhere.
 func (h *Hub) EndPoll() error {
 	reply := make(chan error, 1)
 	h.endPollCh <- reply
