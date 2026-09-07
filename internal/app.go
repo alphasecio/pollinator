@@ -62,6 +62,9 @@ func NewApp(cfg *Config, logger *slog.Logger) (*App, error) {
 	adminBase := "/admin/" + cfg.AdminToken
 	hub := NewHub(cfg.Poll, adminBase, cfg.DisplayURL, cfg.PollVolumePath, tmpl, logger)
 	go hub.Run(context.Background())
+	if cfg.BaseURL != "" {
+		hub.SetBaseURL(cfg.BaseURL)
+	}
 
 	a := &App{
 		cfg:       cfg,
