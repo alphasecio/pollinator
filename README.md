@@ -76,7 +76,7 @@ the event needs to touch.
 | `PORT` | `8080` | |
 | `ADMIN_TOKEN` | random | Printed at startup if unset |
 | `PUBLIC_URL` | inferred | Full base URL. Auto-detected on Railway via `RAILWAY_PUBLIC_DOMAIN`; otherwise inferred from the first request. Set explicitly if your setup doesn't forward host/proto correctly |
-| `DISPLAY_URL` | *(unset)* | Override for what participants see/scan — e.g. a short link. Drives the QR + text fallback, takes priority over `PUBLIC_URL` |
+| `DISPLAY_URL` | *(unset)* | Human-readable link shown under the QR — e.g. an internal short link. Text only; the QR itself always encodes the real reachable URL |
 | `POLL_JSON` | *(optional)* | One-time seed for first boot only |
 | `POLL_VOLUME` | *(unset)* | Path to a writable volume — persists the poll across restarts |
 
@@ -111,6 +111,15 @@ yet and `POLL_JSON` is set, that seed is saved immediately.
 `RAILWAY_RUN_UID=0` alongside `POLL_VOLUME`, or the app fails to boot
 with a "not writable" error.
 
+**On Cloud Run**: same root-owned-by-default issue, different fix — set
+mount options `uid=65532,gid=65532` on the volume (matching the
+container's non-root user), and grant the service's runtime account
+`roles/storage.objectUser` on the bucket. Also bump the service's request
+timeout to the max (3600s) regardless of whether you use `POLL_VOLUME` —
+Cloud Run's default is well under what a live poll's SSE connections
+need, and admin/display/participant connections will get killed mid-event
+otherwise.
+
 ## Deployment
 
 ### Pre-built image
@@ -123,7 +132,7 @@ docker run -p 8080:8080 ghcr.io/alphasecio/pollinator:latest
 ```
 
 No `ADMIN_TOKEN` required — one's generated and logged at startup if you
-don't set one. Pull `:1.0.0` to pin a version, or `:latest` for newest.
+don't set one. Pull `:0.1.1` to pin a version, or `:latest` for newest.
 
 ### Building it yourself
 
