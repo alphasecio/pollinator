@@ -20,7 +20,7 @@
 {{template "join_form" .}}
 {{else if .Participant.Answered}}
 <div class="py-16 text-center text-zinc-400">
-    Locked in — waiting on everyone else to answer{{template "waiting_dots" .}}
+    Locked in — waiting on everyone else{{template "waiting_dots" .}}
 </div>
 {{else}}
 <div class="py-6">

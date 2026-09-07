@@ -13,15 +13,16 @@ const defaultPort = "8080"
 // question duration, and the poll's questions all live in Poll instead
 // (see poll.go), editable through the admin UI rather than fixed for the
 // container's lifetime via env vars. That split is deliberate: Port,
-// AdminToken, BaseURL, and DisplayURL are things whoever deploys this sets
-// once and a non-technical host running the actual event never needs to
-// see; Poll is exactly the opposite.
+// AdminToken, BaseURL, DisplayURL, and PollVolumePath are things whoever
+// deploys this sets once and a non-technical host running the actual
+// event never needs to see; Poll is exactly the opposite.
 type Config struct {
-	Port       string
-	AdminToken string
-	BaseURL    string // "" means unresolved — see app.go's resolveBaseURL
-	DisplayURL string // optional override for what participants see/scan — see hub.go
-	Poll       *Poll  // nil if POLL_JSON wasn't set — admin sees the setup form instead
+	Port           string
+	AdminToken     string
+	BaseURL        string // "" means unresolved — see app.go's resolveBaseURL
+	DisplayURL     string // optional override for what participants see/scan — see hub.go
+	Poll           *Poll  // nil if nothing configured yet — admin sees the setup form instead
+	PollVolumePath string // "" means ephemeral (original behavior) — see persist.go
 }
 
 func LoadConfig() (*Config, error) {
@@ -38,16 +39,45 @@ func LoadConfig() (*Config, error) {
 
 	// POLL_JSON is optional. If it's set, it seeds the poll exactly as
 	// before; if not, admin sees the setup form on first load instead of
-	// the process refusing to start. This is the one moment an env var
-	// gets consulted at all — from here on, the admin UI is the only way
-	// the poll ever changes, so there's no "which one wins" ambiguity to
-	// worry about later.
+	// the process refusing to start.
 	if raw := os.Getenv("POLL_JSON"); raw != "" {
 		poll, err := ParsePoll(raw)
 		if err != nil {
 			return nil, err
 		}
 		cfg.Poll = poll
+	}
+
+	// POLL_VOLUME is validated loudly at boot, not discovered as a silent
+	// surprise hours later — see persist.go. Unset means ephemeral,
+	// exactly the original behavior; set-but-unusable fails the process
+	// outright, since a promise of durable storage that turns out to be
+	// false is exactly the kind of thing that should stop the process
+	// immediately, not be discovered only when a save silently doesn't
+	// stick before the event it was protecting.
+	if dir := os.Getenv("POLL_VOLUME"); dir != "" {
+		if err := validatePollVolume(dir); err != nil {
+			return nil, err
+		}
+		cfg.PollVolumePath = dir
+
+		persisted, err := loadPersistedPoll(dir)
+		if err != nil {
+			return nil, err
+		}
+		if persisted != nil {
+			// A previously-saved poll always wins over POLL_JSON — it's
+			// necessarily more current than a first-boot seed, by
+			// definition of having been saved at all.
+			cfg.Poll = persisted
+		} else if cfg.Poll != nil {
+			// First boot with a POLL_JSON seed and nothing persisted yet
+			// — write the seed out immediately so it survives the very
+			// next restart without needing POLL_JSON set again.
+			if err := savePersistedPoll(dir, cfg.Poll); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return cfg, nil

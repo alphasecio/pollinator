@@ -142,10 +142,18 @@
         </button>
     </div>
     {{if not .IsLastQuestion}}
-    <button hx-post="{{.AdminBase}}/qr"
-            class="mt-4 text-sm text-zinc-400 hover:text-zinc-200 underline underline-offset-4 transition">
-        {{if .State.ShowQR}}Hide QR code{{else}}Show QR code{{end}}
-    </button>
+    <div class="mt-4 flex items-center justify-center gap-4 text-sm">
+        <button hx-post="{{.AdminBase}}/qr"
+                class="text-zinc-400 hover:text-zinc-200 underline underline-offset-4 transition">
+            {{if .State.ShowQR}}Hide QR code{{else}}Show QR code{{end}}
+        </button>
+        <span class="text-zinc-700">·</span>
+        <button hx-post="{{.AdminBase}}/end"
+                hx-confirm="Ending the poll now skips all remaining questions and moves straight to final results. This can't be undone."
+                class="text-zinc-400 hover:text-zinc-200 underline underline-offset-4 transition">
+            End poll
+        </button>
+    </div>
     {{end}}
 </div>
 {{template "questions_preview" .}}
