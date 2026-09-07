@@ -97,7 +97,7 @@ type Hub struct {
 	// resolveBaseURL) rather than fixed at construction, so they're
 	// mutated via setBaseURLCh like everything else the hub owns — read
 	// only from within Run's own goroutine, same as poll and state.
-	displayURL    string // if set, fixes joinURL/joinQRDataURI permanently — see NewHub/setBaseURLCh
+	displayURL    string // if set, overrides only the plain-text link shown under the QR — see NewHub/render; never affects the QR itself, which always encodes the real URL
 	baseURL       string
 	joinURL       string
 	joinQRDataURI string
@@ -137,12 +137,12 @@ type Hub struct {
 // design doesn't change), but nothing about the poll's content is fixed
 // anymore beyond "not while it's running."
 //
-// displayURL is an optional override for what participants see and scan
-// (DISPLAY_URL — e.g. a short link like dub.co/fridayquiz), entirely
-// separate from adminBase's secret-URL-as-bearer-token concern. When set,
-// joinURL/joinQRDataURI are fixed here immediately and the lazy per-request
-// inference in SetBaseURL never touches them again — see the setBaseURLCh
-// case in Run.
+// displayURL is an optional override for the plain-text link shown under
+// the QR on /display (DISPLAY_URL — e.g. an internal short link like
+// go/fridayquiz), entirely separate from adminBase's secret-URL-as-
+// bearer-token concern. It affects only that text, never the QR code
+// itself — a short link may not resolve for everyone scanning it, so the
+// QR always encodes the real URL, established via SetBaseURL.
 //
 // pollVolumePath is "" unless POLL_VOLUME was configured and validated at
 // boot (see config.go) — see the setPollCh case in Run for what it does.
@@ -175,15 +175,15 @@ func NewHub(poll *Poll, adminBase, displayURL, pollVolumePath string, templates 
 		eventTitleCh: make(chan chan string),
 	}
 
-	if displayURL != "" {
-		h.displayURL = displayURL
-		h.joinURL = displayURL
-		if qr, err := qrDataURI(displayURL); err != nil {
-			logger.Error("qr generation failed", "error", err)
-		} else {
-			h.joinQRDataURI = qr
-		}
-	}
+	// displayURL, if set, is stored purely for the plain-text fallback shown
+	// under the QR (see render()) — it no longer drives the QR code itself.
+	// The QR always encodes the real, directly-reachable URL (set via
+	// SetBaseURL below), since a short link like an internal go/ redirect
+	// may not resolve for every phone scanning it, while the QR needs to
+	// work universally. DISPLAY_URL stays useful as a human-typeable
+	// alternative for people who can reach it, just not as what the QR
+	// itself points at.
+	h.displayURL = displayURL
 
 	return h
 }
@@ -288,7 +288,7 @@ func (h *Hub) Run(ctx context.Context) {
 			}
 
 		case req := <-h.setBaseURLCh:
-			if h.displayURL == "" && req.baseURL != h.baseURL {
+			if req.baseURL != h.baseURL {
 				h.baseURL = req.baseURL
 				h.joinURL = req.baseURL
 				qr, err := qrDataURI(h.joinURL)
@@ -681,7 +681,11 @@ func (h *Hub) render(role Role, sessionID string) string {
 		data["EndUnixMilli"] = h.state.QuestionEnd.UnixMilli()
 	}
 	if role == RoleDisplay {
-		data["JoinURL"] = displayJoinURL(h.joinURL)
+		joinText := h.displayURL
+		if joinText == "" {
+			joinText = h.joinURL
+		}
+		data["JoinURL"] = displayJoinURL(joinText)
 		data["QRDataURI"] = template.URL(h.joinQRDataURI)
 		data["ParticipantNames"] = h.participantNames()
 	}
