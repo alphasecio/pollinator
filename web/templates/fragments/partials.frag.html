@@ -89,7 +89,7 @@
 {{define "results_bars"}}
 <div class="space-y-4">
     {{range $i, $row := .}}
-    <div class="rounded-xl p-2 border-2 {{if $row.Correct}}border-nectar{{else}}border-transparent{{end}}">
+    <div class="rounded-xl p-2 border-2 {{if $row.Correct}}border-nectar bg-nectar/10{{else}}border-transparent{{end}}">
         <div class="flex justify-between items-start gap-3 text-sm mb-1">
             <span class="flex-1{{if $row.Correct}} text-nectar font-semibold{{end}}">{{$row.Option}}</span>
             <span class="text-zinc-400 shrink-0 whitespace-nowrap">{{$row.Count}} · {{$row.Percent}}%</span>
@@ -106,7 +106,7 @@
 {{define "results_bars_large"}}
 <div class="space-y-5">
     {{range $i, $row := .}}
-    <div class="rounded-xl p-3 border-2 {{if $row.Correct}}border-nectar{{else}}border-transparent{{end}}">
+    <div class="rounded-xl p-3 border-2 {{if $row.Correct}}border-nectar bg-nectar/10{{else}}border-transparent{{end}}">
         <div class="flex justify-between items-start gap-4 text-2xl mb-2">
             <span class="flex-1{{if $row.Correct}} text-nectar font-semibold{{end}}">{{$row.Option}}</span>
             <span class="text-zinc-400 shrink-0 whitespace-nowrap">{{$row.Count}} · {{$row.Percent}}%</span>
