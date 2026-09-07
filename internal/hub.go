@@ -290,7 +290,7 @@ func (h *Hub) Run(ctx context.Context) {
 		case req := <-h.setBaseURLCh:
 			if h.displayURL == "" && req.baseURL != h.baseURL {
 				h.baseURL = req.baseURL
-				h.joinURL = req.baseURL + "/"
+				h.joinURL = req.baseURL
 				qr, err := qrDataURI(h.joinURL)
 				if err != nil {
 					h.logger.Error("qr generation failed", "error", err)
