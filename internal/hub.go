@@ -733,6 +733,7 @@ func (h *Hub) resultsView() []resultRow {
 func displayJoinURL(url string) string {
 	url = strings.TrimPrefix(url, "https://")
 	url = strings.TrimPrefix(url, "http://")
+	url = strings.TrimSuffix(url, "/")
 	return url
 }
 
